@@ -161,10 +161,7 @@ export const UIQuiz = {
 
         return { name: 'Practice Session', color: 'blue', icon: 'pen' };
     }
-};
 
-// Global Exposure (for onclick handlers in HTML string)
-window.UIQuiz = UIQuiz;
     // ============================================================
     // 3. EVENT BINDING (THE NERVOUS SYSTEM)
     // ============================================================
@@ -449,3 +446,5 @@ window.UIQuiz = UIQuiz;
     }
 };
 
+// Global Exposure (for onclick handlers in HTML string)
+window.UIQuiz = UIQuiz;
