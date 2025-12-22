@@ -1,0 +1,16 @@
+{
+  "id": "misc_scheme_09",
+  "subject": "polity",
+  "topic": "Governance Schemes",
+  "level": "L1",
+  "text": "The 'PM-KISAN' scheme comes under which Ministry?",
+  "options": [
+    "Ministry of Rural Development",
+    "Ministry of Agriculture & Farmers Welfare",
+    "Ministry of Finance",
+    "NITI Aayog"
+  ],
+  "correctOption": 1,
+  "explanation": "PM-KISAN is a central sector scheme under the Ministry of Agriculture & Farmers Welfare.",
+  "random": 0.555
+}
