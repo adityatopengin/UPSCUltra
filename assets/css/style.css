@@ -1,0 +1,571 @@
+/* * UPSC SUPERAPP - PREMIUM STYLING ENGINE
+ * Version: 2.0.0 (VisionOS Inspired)
+ * Path: assets/css/style.css
+ * * PART 1: CORE FOUNDATION & DESIGN TOKENS
+ */
+
+/* =========================================
+   1. VARIABLES & TOKENS
+   ========================================= */
+:root {
+    /* --- COLOR PALETTE: LIGHT MODE (Ceramic) --- */
+    --bg-app: #f8fafc;        /* Slate-50 - The canvas */
+    --text-primary: #1e293b;  /* Slate-800 - High contrast text */
+    --text-secondary: #64748b;/* Slate-500 - Subtitles */
+    --glass-surface: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --glass-highlight: rgba(255, 255, 255, 0.9);
+    --glass-shadow: rgba(148, 163, 184, 0.15); /* Soft colored shadow */
+    
+    /* Brand Colors (Contextual) */
+    --primary: #3b82f6;       /* Blue-500 */
+    --success: #10b981;       /* Emerald-500 */
+    --warning: #f59e0b;       /* Amber-500 */
+    --danger: #f43f5e;        /* Rose-500 */
+    --accent: #8b5cf6;        /* Violet-500 */
+
+    /* --- DIMENSIONS & SPACING --- */
+    --header-height: 4rem;    /* 64px */
+    --dock-height: 5rem;      /* 80px */
+    --safe-area-top: env(safe-area-inset-top);
+    --safe-area-bottom: env(safe-area-inset-bottom);
+    
+    /* --- ANIMATION SPEEDS --- */
+    --ease-elastic: cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy press */
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);       /* iOS Slide */
+}
+
+/* --- COLOR PALETTE: DARK MODE (Deep Space) --- */
+/* The app defaults to Dark Mode logic if the class .dark is present */
+.dark {
+    --bg-app: #0f172a;        /* Slate-900 - Deep, rich navy */
+    --text-primary: #f1f5f9;  /* Slate-100 - Crisp white */
+    --text-secondary: #94a3b8;/* Slate-400 - Softer gray */
+    
+    /* Voluminous Glass Tokens (Dark) */
+    --glass-surface: rgba(30, 41, 59, 0.7);   /* Slate-800 with transparency */
+    --glass-border: rgba(255, 255, 255, 0.08);/* Subtle white rim */
+    --glass-highlight: rgba(255, 255, 255, 0.15); /* Top edge shine */
+    --glass-shadow: rgba(0, 0, 0, 0.4);       /* Deep ambient occlusion */
+}
+
+/* =========================================
+   2. GLOBAL RESET & BASE
+   ========================================= */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent; /* Remove blue tap box on mobile */
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden; /* App-like feel, scroll happens in containers */
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    
+    /* Premium Font Rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    
+    /* Background Transition */
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    transition: background-color 0.4s var(--ease-smooth), color 0.3s ease;
+}
+
+/* =========================================
+   3. THE "NOISE" TEXTURE (TACTILE FEEL)
+   ========================================= */
+/* Creates a static grain overlay that makes the glass feel physical */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.035; /* Adjust visibility of grain */
+    
+    /* Base64 Noise SVG Pattern */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* =========================================
+   4. SCROLLBAR HIDING (Clean Look)
+   ========================================= */
+::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+}
+* {
+    scrollbar-width: none;
+}
+/* * PART 2: THE GLASS ENGINE (VOLUMINOUS 3D EFFECTS)
+ * Implements the "VisionOS" aesthetic.
+ */
+
+/* =========================================
+   5. GLASS PRIMITIVES
+   ========================================= */
+
+/* The Base Glass Material (Used for static panels) */
+.glass-panel {
+    background: linear-gradient(
+        135deg, 
+        var(--glass-surface) 0%, 
+        rgba(255, 255, 255, 0.05) 100%
+    );
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    
+    border: 1px solid var(--glass-border);
+    border-top: 1px solid var(--glass-highlight); /* Top light catch */
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);  /* Bottom shadow edge */
+    
+    box-shadow: 
+        0 4px 24px -1px var(--glass-shadow),    /* Ambient Occlusion */
+        inset 0 1px 0 rgba(255, 255, 255, 0.2); /* Inner rim lighting */
+}
+
+/* =========================================
+   6. INTERACTIVE 3D CARDS
+   ========================================= */
+
+/* Use this for Subject Tiles, Quiz Options, Results Cards */
+.glass-card {
+    position: relative;
+    isolation: isolate; /* Create new stacking context */
+    overflow: hidden;   /* Clip internal glows */
+    
+    background: linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.03) 100%
+    );
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    
+    border-radius: 24px; /* Super rounded corners */
+    border: 1px solid var(--glass-border);
+    
+    box-shadow: 
+        0 8px 32px 0 rgba(0, 0, 0, 0.2), 
+        inset 0 0 0 1px rgba(255, 255, 255, 0.05); /* Double border trick */
+        
+    transition: all 0.3s var(--ease-elastic);
+    transform: translateZ(0); /* Hardware Acceleration */
+    cursor: pointer;
+}
+
+/* Hover State: Lift & Brighten */
+.glass-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    background: linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.15) 0%,
+        rgba(255, 255, 255, 0.05) 100%
+    );
+    box-shadow: 
+        0 16px 48px 0 rgba(0, 0, 0, 0.3),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Active/Press State: Physical Depression */
+.glass-card:active {
+    transform: translateY(0px) scale(0.97);
+    box-shadow: 
+        0 4px 12px 0 rgba(0, 0, 0, 0.2),
+        inset 0 2px 4px rgba(0,0,0,0.1); /* Inner shadow deepens */
+}
+
+/* =========================================
+   7. NEON & GLOW UTILITIES
+   ========================================= */
+
+/* Text Gradient (Metallic/Neon finish) */
+.text-gradient {
+    background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 2px 10px rgba(255,255,255,0.1);
+}
+
+/* Dynamic Aura (Behind Cards) */
+/* Usage: <div class="glow-bg glow-blue"></div> */
+.glow-bg {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.6;
+    z-index: -1;
+    pointer-events: none;
+    transition: background-color 0.5s ease;
+}
+
+.glow-blue { background: var(--primary); }
+.glow-amber { background: var(--warning); }
+.glow-rose { background: var(--danger); }
+.glow-emerald { background: var(--success); }
+
+/* =========================================
+   8. SPECIFIC COMPONENT OVERRIDES
+   ========================================= */
+
+/* The Bottom Dock (Floating Glass Pill) */
+#main-nav .nav-btn {
+    transition: all 0.3s var(--ease-smooth);
+}
+#main-nav .nav-btn.active {
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 20px var(--glass-shadow);
+    backdrop-filter: blur(8px);
+}
+#main-nav .nav-btn.active i {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 8px currentColor); /* Neon icon glow */
+}
+/* * PART 3: LAYOUT & SHELL (STRUCTURE)
+ * Handles mobile safe-areas, grids, and view containers.
+ */
+
+/* =========================================
+   9. VIEW CONTAINERS
+   ========================================= */
+
+/* The Main Stage (Base for all views) */
+.view-container {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    padding-top: var(--safe-area-top);
+    padding-bottom: calc(var(--dock-height) + var(--safe-area-bottom));
+    
+    /* Smooth Transition between pages */
+    animation: fade-in 0.4s var(--ease-smooth);
+}
+
+/* Specific overrides for Quiz Mode (Full Screen) */
+.view-container.quiz-mode {
+    padding-bottom: 0; /* No dock in quiz */
+    background-color: #0f172a; /* Force dark mode background for focus */
+}
+
+/* =========================================
+   10. MOBILE SAFE AREAS (The Notch)
+   ========================================= */
+
+/* Utility to add padding for Home Indicator */
+.safe-area-pb {
+    padding-bottom: max(1rem, var(--safe-area-bottom));
+}
+
+/* Utility to add padding for Status Bar */
+.safe-area-pt {
+    padding-top: max(1rem, var(--safe-area-top));
+}
+
+/* =========================================
+   11. DASHBOARD GRID SYSTEM
+   ========================================= */
+
+/* The masonry-style grid for Subject Tiles */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 Columns on mobile */
+    gap: 1rem;
+    padding: 1rem;
+    padding-bottom: 6rem; /* Extra scroll space for dock */
+}
+
+/* Desktop/Tablet Adjustment */
+@media (min-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(3, 1fr);
+        max-width: 1024px;
+        margin: 0 auto;
+    }
+}
+
+/* The "Featured" Tile (Spans full width) */
+.col-span-2 {
+    grid-column: span 2;
+}
+
+/* =========================================
+   12. QUIZ LAYOUT HELPERS
+   ========================================= */
+
+/* The Question Card Container */
+#q-card {
+    max-width: 640px;
+    margin: 0 auto;
+    /* Glass effect is applied via .glass-panel utility in HTML */
+}
+
+/* The Option List Stack */
+#options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* =========================================
+   13. RESULTS LAYOUT HELPERS
+   ========================================= */
+
+/* The "Analysis Grid" (Stats Cards) */
+#analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr; /* Stacked on mobile */
+    gap: 1rem;
+    max-width: 640px;
+    margin: 0 auto;
+    padding-bottom: 6rem;
+}
+
+@media (min-width: 640px) {
+    #analysis-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    /* First card (Score) usually spans full width */
+    #analysis-grid > *:first-child {
+        grid-column: 1 / -1;
+    }
+}
+
+/* * PART 4: UI COMPONENTS (BUTTONS & WIDGETS)
+ * The interactive elements that user touches.
+ */
+
+/* =========================================
+   14. BUTTONS & ACTIONS
+   ========================================= */
+
+/* Base Button Reset */
+button {
+    font-family: inherit;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    background: transparent;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 14.A Primary Action Button (Gradient Glow) */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 
+        0 4px 12px rgba(59, 130, 246, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transition: all 0.2s var(--ease-elastic);
+}
+
+.btn-primary:active {
+    transform: scale(0.96);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+}
+
+/* 14.B Ghost / Glass Button */
+.btn-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.btn-glass:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* =========================================
+   15. PROGRESS BARS & TIMERS
+   ========================================= */
+
+/* The Container Track */
+.progress-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* The Fill (Animated Width) */
+.progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--primary);
+    box-shadow: 0 0 12px var(--primary); /* Neon Glow */
+    transition: width 1s linear, background-color 0.3s ease;
+}
+
+/* Color Shifts for Timer (Managed by JS, but classes defined here) */
+.progress-fill.warning { background: var(--warning); box-shadow: 0 0 12px var(--warning); }
+.progress-fill.danger { background: var(--danger); box-shadow: 0 0 12px var(--danger); }
+
+/* =========================================
+   16. ORACLE HUD (THE BRAIN)
+   ========================================= */
+
+/* The Canvas Container */
+#oracle-container {
+    position: relative;
+    width: 300px; /* Base size */
+    height: 300px;
+    margin: 0 auto;
+    
+    /* Hardware Acceleration */
+    transform: translateZ(0); 
+    
+    /* Center content */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Floating labels around the Oracle */
+.oracle-label {
+    position: absolute;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    pointer-events: none;
+    text-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+/* =========================================
+   17. TOAST NOTIFICATIONS
+   ========================================= */
+
+#toast-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0; /* Pointer events pass through */
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+}
+
+/* The Toast Bubble styling is handled in JS (ui-manager.js), 
+   but we add the shadow utility here if needed specifically */
+/* * PART 5: ANIMATION LIBRARY (MOTION DESIGN)
+ * Keyframes and utility classes for transitions.
+ */
+
+/* =========================================
+   18. UTILITY CLASSES
+   ========================================= */
+
+.animate-fade-in {
+    animation: fade-in 0.6s var(--ease-smooth) forwards;
+}
+
+.animate-slide-up {
+    animation: slide-up 0.5s var(--ease-elastic) forwards;
+}
+
+.animate-slide-down {
+    animation: slide-down 0.5s var(--ease-elastic) forwards;
+}
+
+.animate-pulse {
+    animation: pulse 2s infinite ease-in-out;
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* =========================================
+   19. KEYFRAMES
+   ========================================= */
+
+/* Fade In (Opacity only) */
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Slide Up (Used for entering Views) */
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Slide Down (Used for Toasts) */
+@keyframes slide-down {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -20px); /* Center X maintained */
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+/* Soft Pulse (Used for text indicators) */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Spin (Used for loaders) */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* =========================================
+   20. RESPONSIVE MODIFIERS
+   ========================================= */
+
+/* Desktop Tweaks for "App-like" centering */
+@media (min-width: 1024px) {
+    body {
+        background-color: #020617; /* Even darker outer bg */
+    }
+    
+    #app-container {
+        max-width: 480px; /* Mobile width simulator */
+        margin: 0 auto;
+        border-left: 1px solid rgba(255,255,255,0.1);
+        border-right: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 0 100px rgba(0,0,0,0.5);
+        background-color: var(--bg-app); /* Inner bg */
+    }
+    
+    #main-nav {
+        max-width: 480px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    
+    /* Toast positioning fix for centered layout */
+    #toast-container {
+        left: 50%;
+        transform: translateX(-50%);
+        width: 480px;
+    }
+}
