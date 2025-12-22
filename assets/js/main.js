@@ -9,10 +9,12 @@
  */
 
 import { DB } from './services/db.js';
+import { DataSeeder } from './services/data-seeder.js'; 
 import { MasterAggregator } from './services/master-aggregator.js';
 import { UI } from './ui/ui-manager.js'; // Assumes you have a UI Manager that loads views
 import { Engine } from './engine/quiz-engine.js'; // The new Engine module
 import { CONFIG } from './config.js';
+
 
 export const Main = {
     // ============================================================
@@ -28,39 +30,46 @@ export const Main = {
     // ============================================================
     // 2. INITIALIZATION (BOOT SEQUENCE)
     // ============================================================
-    async init() {
-        console.log(`🚀 ${CONFIG.name} v${CONFIG.version} Booting System...`);
+  async init() {
+    console.log(`🚀 ${CONFIG.name} v${CONFIG.version} Booting System...`);
 
-        try {
-            // A. Initialize Database (The Foundation)
-            await DB.connect();
-            
-            // B. Initialize Services (The Manager)
-            MasterAggregator.init();
+    try {
+        // 1. Initialize Database (The Foundation)
+        await DB.connect();
+        
+        // 2. RUN GENESIS: Seed Database if empty (CRITICAL NEW STEP)
+        // This ensures the app is never "empty" for the user
+        await DataSeeder.init();
+        
+        // 3. Initialize Services (The Manager)
+        MasterAggregator.init();
 
-            // C. Load User Preferences (Theme, etc.)
-            await this._loadPreferences();
+        // 4. Load User Preferences (Theme, etc.)
+        await this._loadPreferences();
 
-            // D. Start Router (Navigation)
-            this._initRouter();
+        // 5. Start Router (Navigation)
+        this._initRouter();
 
-            // E. Initial Render (Force Home if no hash)
-            if (!window.location.hash) {
-                this.navigate('home');
-            } else {
-                this._handleRoute(); // Handle deep link (e.g., Refresh on #stats)
-            }
-
-            console.log("✅ System Online.");
-
-        } catch (e) {
-            console.error("CRITICAL: Boot Failed", e);
-            document.body.innerHTML = `<div style="padding:20px; color:red; text-align:center;">
-                <h2>System Failure</h2><p>${e.message}</p>
-                <button onclick="window.location.reload()">Reboot</button>
-            </div>`;
+        // 6. Initial Render
+        if (!window.location.hash) {
+            this.navigate('home');
+        } else {
+            this._handleRoute(); 
         }
-    },
+
+        console.log("✅ System Online.");
+
+    } catch (e) {
+        console.error("CRITICAL: Boot Failed", e);
+        // Show emergency UI
+        document.body.innerHTML = `<div style="padding:20px; color:#f43f5e; text-align:center; font-family:sans-serif; margin-top:30vh;">
+            <h2 style="font-size:2rem; margin-bottom:10px;">⚠️ System Failure</h2>
+            <p style="opacity:0.8;">${e.message}</p>
+            <button onclick="window.location.reload()" style="margin-top:20px; padding:10px 20px; background:#333; color:#fff; border:none; border-radius:8px;">REBOOT SYSTEM</button>
+        </div>`;
+    }
+},
+
 
     // ============================================================
     // 3. ROUTER (NAVIGATION)
