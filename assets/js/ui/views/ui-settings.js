@@ -152,7 +152,7 @@ export const UISettings = {
                         <p class="text-[9px] font-bold text-slate-500 uppercase">Dark Mode Only</p>
                     </div>
                 </div>
-                onclick="Main.toggleTheme()" class="w-12 h-7 bg-blue-600 rounded-full relative transition-all shadow-inner">
+                <onclick="Main.toggleTheme()" class="w-12 h-7 bg-blue-600 rounded-full relative transition-all shadow-inner">
                     <div class="w-5 h-5 bg-white rounded-full absolute top-1 right-1 shadow-md"></div>
                 </button>
             </div>
