@@ -460,7 +460,7 @@ export const AcademicEngine = {
                 color: m.score > 75 ? 'green' : (m.score > 40 ? 'yellow' : 'red')
             };
         });
-    }
+    },
         // ============================================================
     // 8. MISSING UI HELPERS (Fixes TypeError)
     // ============================================================
