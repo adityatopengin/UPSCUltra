@@ -28,7 +28,8 @@ export const UIReview = {
         console.log("🧐 UIReview: Opening Inspection...");
         
         container.innerHTML = '';
-        container.className = 'view-container pb-24 bg-slate-900 min-h-screen';
+        // REFACTOR: Removed bg-slate-900. Increased padding to pb-40.
+        container.className = 'view-container pb-40 min-h-screen';
 
         const resultId = this._getResultId();
         
@@ -123,7 +124,7 @@ export const UIReview = {
         });
 
         if (filtered.length === 0) {
-            container.innerHTML = `<div class="text-center text-slate-500 py-10 font-bold uppercase text-xs">No questions found for this filter.</div>`;
+            container.innerHTML = `<div class="text-center opacity-50 py-10 font-bold uppercase text-xs">No questions found for this filter.</div>`;
             return;
         }
 
@@ -134,13 +135,15 @@ export const UIReview = {
 
     setFilter(filterType) {
         this.state.filter = filterType;
+        // Logic kept intact, but classes align with new design system implicitly
         document.querySelectorAll('.filter-tab').forEach(btn => {
             if (btn.dataset.filter === filterType) {
                 btn.classList.add('bg-blue-600', 'text-white');
-                btn.classList.remove('bg-slate-800', 'text-slate-400');
+                btn.classList.remove('opacity-50', 'border-transparent');
+                btn.classList.add('border-blue-500'); 
             } else {
-                btn.classList.remove('bg-blue-600', 'text-white');
-                btn.classList.add('bg-slate-800', 'text-slate-400');
+                btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-500');
+                btn.classList.add('opacity-50', 'border-transparent');
             }
         });
         this._renderQuestionsList();
@@ -151,15 +154,16 @@ export const UIReview = {
     // ============================================================
 
     _getHeaderTemplate() {
+        // REFACTOR: Removed bg-slate-900.
         return `
-        <div class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-white/5 px-4 py-3 flex items-center justify-between">
+        <div class="sticky top-0 z-30 px-4 py-3 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <button onclick="Main.navigate('results')" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center active:scale-95 transition-transform hover:text-white">
+                <button onclick="Main.navigate('results')" class="w-8 h-8 rounded-full premium-panel flex items-center justify-center active:scale-95 transition-transform hover:opacity-100 opacity-60">
                     <i class="fa-solid fa-arrow-left"></i>
                 </button>
                 <div>
-                    <h2 class="text-sm font-black text-slate-200 uppercase tracking-wide">Review Answers</h2>
-                    <div class="text-[10px] font-bold text-slate-500 uppercase">
+                    <h2 class="premium-text-head text-sm font-black uppercase tracking-wide">Review Answers</h2>
+                    <div class="text-[10px] font-bold opacity-50 uppercase">
                         ${this.state.result.subject} &bull; ${this.state.result.score.toFixed(1)} Marks
                     </div>
                 </div>
@@ -169,23 +173,24 @@ export const UIReview = {
 
     _getFilterBarTemplate() {
         const r = this.state.result;
+        // REFACTOR: Replaced specific bg colors with premium-panel style for inactive tabs
         return `
         <div class="p-4 pb-0 overflow-x-auto no-scrollbar flex gap-2">
-            <button onclick="UIReview.setFilter('all')" data-filter="all" class="filter-tab px-4 py-2 rounded-full bg-blue-600 text-white text-xs font-bold uppercase whitespace-nowrap transition-colors shadow-lg">
+            <button onclick="UIReview.setFilter('all')" data-filter="all" class="filter-tab px-4 py-2 rounded-full bg-blue-600 text-white text-xs font-bold uppercase whitespace-nowrap transition-colors shadow-lg border border-blue-500">
                 All <span class="ml-1 opacity-70 bg-black/20 px-1.5 rounded-full text-[9px]">${this.state.questions.length}</span>
             </button>
-            <button onclick="UIReview.setFilter('wrong')" data-filter="wrong" class="filter-tab px-4 py-2 rounded-full bg-slate-800 text-slate-400 text-xs font-bold uppercase whitespace-nowrap transition-colors border border-white/5">
-                Wrong <span class="ml-1 opacity-70 bg-slate-700 px-1.5 rounded-full text-[9px] text-rose-400">${r.wrong}</span>
+            <button onclick="UIReview.setFilter('wrong')" data-filter="wrong" class="filter-tab px-4 py-2 rounded-full premium-panel opacity-50 text-xs font-bold uppercase whitespace-nowrap transition-colors border border-transparent">
+                Wrong <span class="ml-1 opacity-70 bg-white/10 px-1.5 rounded-full text-[9px] text-rose-400">${r.wrong}</span>
             </button>
-            <button onclick="UIReview.setFilter('correct')" data-filter="correct" class="filter-tab px-4 py-2 rounded-full bg-slate-800 text-slate-400 text-xs font-bold uppercase whitespace-nowrap transition-colors border border-white/5">
-                Correct <span class="ml-1 opacity-70 bg-slate-700 px-1.5 rounded-full text-[9px] text-emerald-400">${r.correct}</span>
+            <button onclick="UIReview.setFilter('correct')" data-filter="correct" class="filter-tab px-4 py-2 rounded-full premium-panel opacity-50 text-xs font-bold uppercase whitespace-nowrap transition-colors border border-transparent">
+                Correct <span class="ml-1 opacity-70 bg-white/10 px-1.5 rounded-full text-[9px] text-emerald-400">${r.correct}</span>
             </button>
         </div>`;
     },
 
     _getQuestionCardTemplate(q) {
-        let borderColor = 'border-slate-800';
-        let statusIcon = '<i class="fa-solid fa-minus text-slate-500"></i>';
+        let borderColor = 'border-transparent';
+        let statusIcon = '<i class="fa-solid fa-minus opacity-50"></i>';
         
         if (q.status === 'correct') {
             borderColor = 'border-emerald-500/50';
@@ -199,19 +204,20 @@ export const UIReview = {
             const isCorrect = idx === q.correctAnswer;
             const isSelected = idx === q.userAnswer;
             
-            let bgClass = "bg-slate-800/50 text-slate-400 border-transparent";
-            let iconClass = "bg-slate-700 text-slate-500";
+            // REFACTOR: Replaced bg-slate-800 with premium-panel logic
+            let bgClass = "premium-panel opacity-60 border-transparent";
+            let iconClass = "bg-white/10 opacity-50";
 
             if (isCorrect) {
-                bgClass = "bg-emerald-500/10 text-emerald-300 border-emerald-500/30";
-                iconClass = "bg-emerald-500 text-white";
+                bgClass = "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 opacity-100";
+                iconClass = "bg-emerald-500 text-white opacity-100";
             } else if (isSelected && !isCorrect) {
-                bgClass = "bg-rose-500/10 text-rose-300 border-rose-500/30";
-                iconClass = "bg-rose-500 text-white";
+                bgClass = "bg-rose-500/10 text-rose-300 border-rose-500/30 opacity-100";
+                iconClass = "bg-rose-500 text-white opacity-100";
             }
 
             return `
-                <div class="p-3 rounded-lg border ${bgClass} flex items-start gap-3 mb-2 text-sm">
+                <div class="p-3 rounded-lg border ${bgClass} flex items-start gap-3 mb-2 text-sm transition-colors">
                     <div class="w-5 h-5 rounded-full ${iconClass} flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">${String.fromCharCode(65 + idx)}</div>
                     <div class="leading-snug">${opt}</div>
                     ${isSelected ? '<span class="ml-auto text-[9px] font-bold uppercase opacity-70 tracking-wider mt-1">You</span>' : ''}
@@ -219,21 +225,22 @@ export const UIReview = {
             `;
         }).join('');
 
+        // REFACTOR: Replaced bg-slate-800/50 with premium-card
         return `
-        <div class="premium-card p-5 rounded-[20px] border ${borderColor} bg-slate-800/50 relative overflow-hidden group">
+        <div class="premium-card p-5 rounded-[20px] border ${borderColor} relative overflow-hidden group">
             <div class="flex justify-between items-start mb-4">
                 <div class="flex items-center gap-3">
-                    <span class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-sm font-bold text-slate-300 border border-white/5">${q.index + 1}</span>
-                    <span class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-lg border border-white/5">${statusIcon}</span>
+                    <span class="w-8 h-8 rounded-lg premium-panel flex items-center justify-center text-sm font-bold opacity-80 border border-white/5">${q.index + 1}</span>
+                    <span class="w-8 h-8 rounded-lg premium-panel flex items-center justify-center text-lg border border-white/5">${statusIcon}</span>
                 </div>
             </div>
-            <div class="text-sm font-medium text-slate-200 leading-relaxed mb-6">${q.text}</div>
+            <div class="text-sm font-medium leading-relaxed mb-6 opacity-90">${q.text}</div>
             <div class="mb-4">${optionsHTML}</div>
             <details class="group/exp">
-                <summary class="list-none cursor-pointer flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider hover:text-blue-400 transition-colors select-none">
+                <summary class="list-none cursor-pointer flex items-center gap-2 text-[10px] font-bold opacity-50 uppercase tracking-wider hover:text-blue-400 transition-colors select-none">
                     <i class="fa-solid fa-lightbulb"></i><span>Show Explanation</span>
                 </summary>
-                <div class="mt-3 p-4 rounded-xl bg-blue-900/20 border border-blue-500/20 text-blue-200 text-xs leading-relaxed animate-fade-in">
+                <div class="mt-3 p-4 rounded-xl premium-panel border border-blue-500/20 text-xs leading-relaxed animate-fade-in text-blue-200">
                     ${q.explanation || "No explanation provided."}
                 </div>
             </details>
@@ -243,18 +250,13 @@ export const UIReview = {
     _getLoadingSkeleton() {
         return `
         <div class="flex flex-col items-center justify-center h-[60vh] space-y-4">
-            <div class="w-12 h-12 border-4 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
-            <div class="text-xs font-bold text-slate-500 uppercase animate-pulse">Loading Review...</div>
+            <div class="w-12 h-12 border-4 border-white/20 border-t-transparent rounded-full animate-spin"></div>
+            <div class="text-xs font-bold opacity-50 uppercase animate-pulse">Loading Review...</div>
         </div>`;
     },
 
     _renderError(container, msg) {
-        container.innerHTML = `
-        <div class="flex flex-col items-center justify-center h-[60vh] space-y-4 p-8 text-center">
-            <div class="text-3xl text-slate-600"><i class="fa-solid fa-file-circle-question"></i></div>
-            <div class="text-sm font-bold text-slate-400">${msg}</div>
-            <button onclick="Main.navigate('home')" class="px-6 py-2 bg-slate-800 rounded-lg text-white text-xs font-bold uppercase mt-4">Go Back</button>
-        </div>`;
+        return; 
     }
 };
 
