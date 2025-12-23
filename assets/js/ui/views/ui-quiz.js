@@ -1,6 +1,6 @@
 /**
  * UI-QUIZ (THE EXAM HALL)
- * Version: 2.0.0
+ * Version: 2.1.0 (Fixed Syntax Error & Race Conditions)
  * Path: assets/js/ui/views/ui-quiz.js
  * Responsibilities:
  * 1. Renders the active question interface.
@@ -23,14 +23,21 @@ export const UIQuiz = {
         container.innerHTML = '';
         container.className = 'view-container h-screen flex flex-col bg-slate-900 overflow-hidden';
 
-        // 2. Get Subject Metadata (for Header)
-        const subId = Engine.state.subjectId;
+        // 2. Safety Check: Is Engine Ready?
+        if (!Engine || !Engine.state) {
+            console.warn("UIQuiz: Engine state missing. Redirecting...");
+            if (window.Main) Main.navigate('home');
+            return;
+        }
+
+        // 3. Get Subject Metadata (for Header)
+        const subId = Engine.state.subjectId || 'unknown';
         const subConfig = this._getSubjectConfig(subId);
 
-        // 3. Inject Layout Skeleton
+        // 4. Inject Layout Skeleton
         container.innerHTML = this._getTemplate(subConfig);
 
-        // 4. Cache DOM Elements (for performance)
+        // 5. Cache DOM Elements (for performance)
         this.dom = {
             timer: document.getElementById('quiz-timer'),
             timerBar: document.getElementById('timer-bar'),
@@ -41,19 +48,19 @@ export const UIQuiz = {
             bookmarkBtn: document.getElementById('btn-bookmark')
         };
 
-        // 5. Initialize Listeners (Part 2)
+        // 6. Initialize Listeners
         this._bindEvents();
 
-        // 6. Check if Session is Active
+        // 7. Check if Session is Active
         if (!Engine.state.active) {
             console.warn("UIQuiz: No active session found. Redirecting...");
             if (window.Main) Main.navigate('home');
             return;
         }
 
-        // 7. Render Initial State
+        // 8. Render Initial State
         // If engine already has questions loaded, render current one
-        if (Engine.state.questions.length > 0) {
+        if (Engine.state.questions && Engine.state.questions.length > 0) {
             this._renderQuestion();
             this._updateTimerDisplay(Engine.state.timeLeft);
         }
@@ -151,17 +158,18 @@ export const UIQuiz = {
      * Helper to find subject name/color from ID
      */
     _getSubjectConfig(id) {
-        // Search GS1 list
-        let conf = CONFIG.subjectsGS1.find(s => s.id === id);
+        // Safe access to CONFIG arrays
+        const gs1 = CONFIG.subjectsGS1 || [];
+        const csat = CONFIG.subjectsCSAT || [];
+        
+        let conf = gs1.find(s => s.id === id);
         if (conf) return conf;
 
-        // Search CSAT list
-        conf = CONFIG.subjectsCSAT.find(s => s.id === id);
+        conf = csat.find(s => s.id === id);
         if (conf) return conf;
 
         return { name: 'Practice Session', color: 'blue', icon: 'pen' };
-    }
-
+    }, // <--- THIS COMMA WAS MISSING! 
     // ============================================================
     // 3. EVENT BINDING (THE NERVOUS SYSTEM)
     // ============================================================
@@ -251,17 +259,21 @@ export const UIQuiz = {
         const btnPrev = document.getElementById('btn-prev');
         const btnNext = document.getElementById('btn-next');
         
-        if (btnPrev) btnPrev.disabled = currentIndex === 0;
-        if (btnPrev) btnPrev.style.opacity = currentIndex === 0 ? '0.5' : '1';
+        if (btnPrev) {
+            btnPrev.disabled = currentIndex === 0;
+            btnPrev.style.opacity = currentIndex === 0 ? '0.5' : '1';
+        }
         
         // Change "Next" to "Finish" on last question (Visual cue only)
         // The actual click still calls UIQuiz.next(), which logic handles elsewhere
-        if (btnNext && currentIndex === questions.length - 1) {
-            btnNext.innerHTML = '<i class="fa-solid fa-flag-checkered"></i>';
-            btnNext.onclick = () => this.toggleGrid(); // Open grid on last 'next'
-        } else {
-            btnNext.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
-            btnNext.onclick = () => this.next();
+        if (btnNext) {
+            if (currentIndex === questions.length - 1) {
+                btnNext.innerHTML = '<i class="fa-solid fa-flag-checkered"></i>';
+                btnNext.onclick = () => this.toggleGrid(); // Open grid on last 'next'
+            } else {
+                btnNext.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+                btnNext.onclick = () => this.next();
+            }
         }
     },
 
@@ -300,151 +312,94 @@ export const UIQuiz = {
             btn.onclick = () => {
                 Engine.submitAnswer(q.id, i);
                 // Engine emits 'ANSWER_SAVED', which triggers _renderOptions via listener
-                // So we don't manually add style classes here to keep state pure.
             };
 
             this.dom.optionsContainer.appendChild(btn);
         });
     },
+    // ============================================================
+    // 4. SUBJECT GRID (NAVIGATION)
+    // ============================================================
 
-    _updateTimerDisplay(seconds) {
-        if (!this.dom.timer) return;
+    async _renderSubjectGrid(container) {
+        // Section Title: GS1
+        const title = document.createElement('h2');
+        title.className = "text-xs font-black text-slate-400 uppercase tracking-widest mb-4 pl-2";
+        title.textContent = "General Studies (Paper 1)";
+        container.appendChild(title);
 
-        // Format MM:SS
-        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-        const s = (seconds % 60).toString().padStart(2, '0');
-        this.dom.timer.textContent = `${m}:${s}`;
-
-        // Update Progress Bar Width
-        if (this.dom.timerBar) {
-            const total = Engine.state.totalDuration;
-            const pct = (seconds / total) * 100;
-            this.dom.timerBar.style.width = `${pct}%`;
-            
-            // Color Shift (Green -> Yellow -> Red)
-            if (pct < 20) this.dom.timerBar.classList.replace('bg-blue-500', 'bg-rose-500');
-            else if (pct < 50) this.dom.timerBar.classList.replace('bg-blue-500', 'bg-amber-500');
+        // Grid Container GS1
+        const grid = document.createElement('div');
+        grid.className = "grid grid-cols-2 gap-3 mb-8";
+        
+        // 1. Generate Tiles for GS Subjects
+        // CONFIG is imported at the top of the file
+        if (CONFIG.subjectsGS1) {
+            CONFIG.subjectsGS1.forEach((sub, index) => {
+                const tile = this._createSubjectTile(sub, index);
+                grid.appendChild(tile);
+            });
         }
-    },
-    // ============================================================
-    // 5. USER ACTIONS (PUBLIC API)
-    // ============================================================
-    // These are called by the HTML onclick handlers
+        container.appendChild(grid);
 
-    next() {
-        Engine.nextQuestion();
-    },
+        // Section Title: CSAT
+        const titleCsat = document.createElement('h2');
+        titleCsat.className = "text-xs font-black text-slate-400 uppercase tracking-widest mb-4 pl-2";
+        titleCsat.textContent = "CSAT (Paper 2)";
+        container.appendChild(titleCsat);
 
-    prev() {
-        Engine.prevQuestion();
-    },
-
-    bookmark() {
-        const { questions, currentIndex } = Engine.state;
-        const q = questions[currentIndex];
-        if (q) Engine.toggleBookmark(q.id);
-    },
-
-    finish() {
-        // Trigger Engine Submission
-        // Engine handles the confirmation dialog and then calls Main.handleQuizCompletion
-        Engine.submitQuiz(); 
-    },
-
-    // ============================================================
-    // 6. GRID NAVIGATION (REVIEW MODAL)
-    // ============================================================
-
-    toggleGrid() {
-        const modal = document.getElementById('grid-modal');
-        if (!modal) return;
-
-        const isHidden = modal.classList.contains('hidden');
-
-        if (isHidden) {
-            // OPEN MODAL
-            this._renderGridItems(); // Refresh data before showing
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        } else {
-            // CLOSE MODAL
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+        // Grid Container CSAT
+        const gridCsat = document.createElement('div');
+        gridCsat.className = "grid grid-cols-2 gap-3 mb-24"; // Extra margin for bottom dock
+        
+        if (CONFIG.subjectsCSAT) {
+            CONFIG.subjectsCSAT.forEach((sub, index) => {
+                const tile = this._createSubjectTile(sub, index + 5); // Offset index for animation delay
+                gridCsat.appendChild(tile);
+            });
         }
+        container.appendChild(gridCsat);
     },
 
-    _renderGridItems() {
-        if (!this.dom.navGrid) return;
-        this.dom.navGrid.innerHTML = '';
+    // ============================================================
+    // 5. HELPER: TILE GENERATOR
+    // ============================================================
 
-        const { questions, currentIndex, answers, bookmarks } = Engine.state;
-
-        questions.forEach((q, index) => {
-            const isAnswered = answers[q.id] !== undefined;
-            const isCurrent = index === currentIndex;
-            const isBookmarked = bookmarks.has(q.id);
-
-            // Determine Color Class
-            let bgClass = 'bg-slate-800 text-slate-400 border-slate-700'; // Default (Unseen)
-            
-            if (isCurrent) {
-                bgClass = 'bg-white text-blue-900 border-white ring-2 ring-blue-500'; // Active
-            } else if (isAnswered) {
-                bgClass = 'bg-blue-600 text-white border-blue-500'; // Answered
-            } else if (isBookmarked) {
-                bgClass = 'bg-amber-500/20 text-amber-500 border-amber-500/50'; // Marked for Review
+    _createSubjectTile(sub, index) {
+        const div = document.createElement('div');
+        // Animation delay for "Cascade" effect
+        const delay = index * 50; 
+        
+        div.className = `premium-card p-4 rounded-[24px] flex flex-col justify-between h-32 active:scale-95 transition-transform animate-view-enter relative overflow-hidden group cursor-pointer border border-white/5 hover:border-${sub.color}-500/30`;
+        div.style.animationDelay = `${delay}ms`;
+        
+        div.onclick = () => {
+            // Trigger the Quiz Setup via Main Controller
+            // We use the global window.Main to ensure the controller is reachable
+            if (window.Main && window.Main.selectSubject) {
+                window.Main.selectSubject(sub.id); 
+            } else {
+                console.warn("Main controller not found");
             }
+        };
 
-            // Create Grid Item
-            const btn = document.createElement('button');
-            btn.className = `w-full aspect-square rounded-lg flex flex-col items-center justify-center border transition-all ${bgClass}`;
+        div.innerHTML = `
+            <div class="absolute -right-4 -top-4 w-20 h-20 bg-${sub.color}-500/10 rounded-full blur-2xl group-hover:bg-${sub.color}-500/20 transition-colors"></div>
             
-            // Inner Content
-            btn.innerHTML = `
-                <span class="text-sm font-bold">${index + 1}</span>
-                ${isBookmarked ? '<i class="fa-solid fa-bookmark text-[8px] mt-1"></i>' : ''}
-            `;
-
-            btn.onclick = () => {
-                Engine.goToQuestion(index);
-                this.toggleGrid(); // Close modal after selection
-            };
-
-            this.dom.navGrid.appendChild(btn);
-        });
-    },
-
-    // ============================================================
-    // 7. UTILITIES & CLEANUP
-    // ============================================================
-
-    _updateBookmarkIcon() {
-        if (!this.dom.bookmarkBtn) return;
+            <div class="w-10 h-10 rounded-xl bg-${sub.color}-100 dark:bg-${sub.color}-900/30 text-${sub.color}-600 flex items-center justify-center text-lg z-10">
+                <i class="fa-solid fa-${sub.icon}"></i>
+            </div>
+            
+            <div class="z-10">
+                <h3 class="text-sm font-black text-slate-700 dark:text-slate-200 leading-tight">${sub.name}</h3>
+                <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 group-hover:text-${sub.color}-400 transition-colors">Start Mock</p>
+            </div>
+        `;
         
-        const { questions, currentIndex, bookmarks } = Engine.state;
-        const q = questions[currentIndex];
-        
-        if (q && bookmarks.has(q.id)) {
-            // Active State
-            this.dom.bookmarkBtn.className = "w-12 h-12 rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center";
-            this.dom.bookmarkBtn.innerHTML = '<i class="fa-solid fa-bookmark"></i>';
-        } else {
-            // Inactive State
-            this.dom.bookmarkBtn.className = "w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:text-amber-400 active:scale-95 transition-all flex items-center justify-center";
-            this.dom.bookmarkBtn.innerHTML = '<i class="fa-regular fa-bookmark"></i>';
-        }
-    },
-
-    /**
-     * Called automatically if the router switches views away from #quiz.
-     * Prevents "Ghost Listeners" from firing in the background.
-     */
-    destroy() {
-        if (this._cleanup) this._cleanup();
-        this.dom = {}; // Clear DOM references
-        console.log("📝 UIQuiz: View Destroyed.");
+        return div;
     }
 };
 
-// Global Exposure (for onclick handlers in HTML string)
-window.UIQuiz = UIQuiz;
+// Auto-register to global scope so UI-Manager can find it
+window.UIHome = UIHome;
+
