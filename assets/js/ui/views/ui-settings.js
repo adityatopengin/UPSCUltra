@@ -1,6 +1,6 @@
 /**
  * UI-SETTINGS (CONTROL CENTER)
- * Version: 2.5.0
+ * Version: 2.6.0 (Fixed Import & Handlers)
  * Path: assets/js/ui/views/ui-settings.js
  * Responsibilities:
  * 1. System Preferences (Theme, Haptics, Data).
@@ -10,7 +10,7 @@
 
 import { UI } from '../ui-manager.js';
 import { CONFIG } from '../../config.js';
-import { StorageService } from '../../services/db.js'; // Assuming DB service for export/import
+import { StorageService, DB } from '../../services/db.js'; 
 
 export const UISettings = {
     // ============================================================
@@ -48,7 +48,74 @@ export const UISettings = {
     },
 
     // ============================================================
-    // 3. COMPONENT TEMPLATES
+    // 3. DATA HANDLERS (ADDED THIS SECTION TO FIX BUTTONS)
+    // ============================================================
+
+    async handleExport() {
+        try {
+            UI.showToast("Preparing Backup...", "info");
+            const json = await StorageService.exportData();
+            
+            // Create Download Link
+            const blob = new Blob([json], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `upsc-backup-${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            
+            UI.showToast('Backup Downloaded!', 'success');
+        } catch(e) {
+            console.error(e);
+            UI.showToast('Export Failed', 'error');
+        }
+    },
+
+    handleImport() {
+        // Trigger the hidden file input
+        const input = document.getElementById('import-file');
+        if(input) input.click();
+    },
+
+    async processImportFile(input) {
+        const file = input.files[0];
+        if(!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                UI.showToast("Restoring Data...", "info");
+                await StorageService.importData(e.target.result);
+                UI.showToast('Data Restored Successfully!', 'success');
+                // Reload to apply changes
+                setTimeout(() => window.location.reload(), 1500);
+            } catch(err) {
+                UI.showToast('Corrupt or Invalid File', 'error');
+            }
+        };
+        reader.readAsText(file);
+    },
+
+    async handleReset() {
+        if(confirm("⚠️ FACTORY RESET WARNING ⚠️\n\nThis will permanently delete ALL your progress, history, and stats.\n\nAre you sure?")) {
+            await DB.clearStore('history');
+            await DB.clearStore('profiles');
+            await DB.clearStore('academic_state');
+            await DB.clearStore('mistakes');
+            window.location.reload();
+        }
+    },
+    
+    _handleEasterEgg() {
+        this.state.clickCount++;
+        if (this.state.clickCount === 5) {
+            UI.showToast("👨‍💻 Developer Mode Unlocked", "success");
+            // Add any dev logic here
+        }
+    },
+
+    // ============================================================
+    // 4. COMPONENT TEMPLATES (PRESERVED)
     // ============================================================
 
     _getHeaderTemplate() {
@@ -63,14 +130,13 @@ export const UISettings = {
                     <i class="fa-solid fa-sliders"></i>
                 </div>
             </div>
-        </header>
-        `;
+        </header>`;
     },
 
     _getSystemPrefsTemplate() {
         // Calculate Storage Usage (Mock logic or actual localstorage length)
         const usedKB = Math.round(JSON.stringify(localStorage).length / 1024);
-        const percent = Math.min(100, (usedKB / 5000) * 100); // Assuming 5MB limit roughly
+        const percent = Math.min(100, (usedKB / 5000) * 100); 
 
         return `
         <section class="space-y-3">
@@ -100,16 +166,15 @@ export const UISettings = {
                     <div class="h-full bg-emerald-500 rounded-full shadow-[0_0_10px_#10b981]" style="width: ${percent}%"></div>
                 </div>
             </div>
-        </section>
-        `;
+        </section>`;
     },
+
     _getDataControlTemplate() {
         return `
         <section class="space-y-3">
             <label class="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-4">Data Persistence</label>
             
             <div class="grid grid-cols-2 gap-3">
-                
                 <button onclick="UISettings.handleExport()" class="glass-card p-4 flex flex-col gap-3 group active:scale-95 transition-transform hover:bg-white/5">
                     <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20 group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-cloud-arrow-down text-lg"></i>
@@ -147,8 +212,7 @@ export const UISettings = {
             </div>
             
             <input type="file" id="import-file" class="hidden" accept=".json" onchange="UISettings.processImportFile(this)">
-        </section>
-        `;
+        </section>`;
     },
 
     _getIntelligenceTemplate() {
@@ -181,9 +245,9 @@ export const UISettings = {
                     </div>
                 </button>
             </div>
-        </section>
-        `;
+        </section>`;
     },
+
     _getMissionTemplate() {
         return `
         <section class="space-y-3">
@@ -216,8 +280,7 @@ export const UISettings = {
                 </div>
                 <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition-colors"></i>
             </button>
-        </section>
-        `;
+        </section>`;
     },
 
     _getCreatorTemplate() {
@@ -251,8 +314,7 @@ export const UISettings = {
                     <i class="fa-solid fa-chevron-right text-rose-500/30 group-hover:text-rose-500 transition-colors"></i>
                 </button>
             </div>
-        </section>
-        `;
+        </section>`;
     },
 
     _getFooterTemplate() {
@@ -282,9 +344,9 @@ export const UISettings = {
                     Gyan Amala &bull; v${CONFIG.version || '2.0.0'}
                 </p>
             </div>
-        </footer>
-        `;
+        </footer>`;
     },
+
     // ============================================================
     // 5. MODAL SYSTEM ENGINE
     // ============================================================
@@ -298,7 +360,6 @@ export const UISettings = {
         if (!contentHTML) return;
 
         // 2. Inject into Overlay
-        // We wrap it in a glass container with "Pop In" animation
         overlay.innerHTML = `
             <div class="w-full max-w-md mx-4 max-h-[85vh] overflow-hidden relative animate-slide-up
                 bg-slate-900/90 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/50 rounded-[32px] flex flex-col">
@@ -320,7 +381,7 @@ export const UISettings = {
 
         // 3. Show Overlay
         overlay.classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        document.body.style.overflow = 'hidden'; 
     },
 
     closeModal() {
@@ -333,7 +394,7 @@ export const UISettings = {
             }
 
             overlay.classList.add('hidden');
-            overlay.innerHTML = ''; // Clean up DOM
+            overlay.innerHTML = ''; 
             document.body.style.overflow = '';
         }
     },
@@ -449,12 +510,12 @@ export const UISettings = {
             </div>
         </div>`;
     },
+
     // ============================================================
     // 7. CONTENT: PERSONALITY MODULES
     // ============================================================
 
     _renderOrientation() {
-        // Note: Audio file path should be valid. Using a placeholder or the one from your previous code.
         return `
         <div class="p-8 text-center">
             <div class="relative w-24 h-24 mx-auto mb-8 group">
@@ -659,5 +720,5 @@ Details: [Insert your bekaar job offer here]`
     }
 };
 
-// Global Exposure
 window.UISettings = UISettings;
+
