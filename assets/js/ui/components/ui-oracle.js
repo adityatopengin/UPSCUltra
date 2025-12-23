@@ -60,7 +60,8 @@ export const UIOracle = {
         containerElement.innerHTML = ''; // Clear placeholder
         const canvas = document.createElement('canvas');
         canvas.id = this.config.canvasId;
-        canvas.className = 'w-full h-full object-contain opacity-80'; // Tailwind styling
+        // REFACTOR: Removed 'opacity-80'. Kept structural classes.
+        canvas.className = 'w-full h-full object-contain'; 
         containerElement.appendChild(canvas);
 
         this.state.ctx = canvas.getContext('2d');
@@ -221,3 +222,5 @@ export const UIOracle = {
 
 // Global Exposure
 window.UIOracle = UIOracle;
+
+
