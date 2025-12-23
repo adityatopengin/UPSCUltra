@@ -6,6 +6,7 @@
  * 1. Defines the Global App Settings (Name, Version, DB).
  * 2. maintain the "Single Source of Truth" for Subject IDs, Colors, and Icons.
  * 3. Centralizes difficulty weights and behavioral constants.
+ * * NOTE: This file contains DATA CONFIGURATION. No CSS refactoring required.
  */
 
 export const CONFIG = {
@@ -169,3 +170,5 @@ export const CONFIG = {
 
 // Global Exposure (Optional, for console debugging)
 window.CONFIG = CONFIG;
+
+
