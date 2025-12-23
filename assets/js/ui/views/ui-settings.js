@@ -30,7 +30,8 @@ export const UISettings = {
         console.log("⚙️ UISettings: Opening Control Center...");
         
         // 1. Setup Shell
-        container.className = 'view-container pb-32 bg-slate-900 min-h-screen select-none';
+        // REFACTOR: Removed bg-slate-900. Increased padding to pb-40.
+        container.className = 'view-container pb-40 min-h-screen select-none';
         
         // 2. Inject Content
         container.innerHTML = `
@@ -43,7 +44,7 @@ export const UISettings = {
                 ${this._getCreatorTemplate()}
                 ${this._getFooterTemplate()}
             </div>
-            <div id="settings-modal-overlay" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm transition-all duration-300"></div>
+            <div id="settings-modal-overlay" class="fixed inset-0 z-[60] hidden flex items-center justify-center transition-all duration-300"></div>
         `;
     },
 
@@ -180,44 +181,45 @@ export const UISettings = {
         if(!container) return;
 
         // Replace Animation with "Official Gazette" Table
+        // REFACTOR: Replaced specific colors with premium-panel and structural classes
         container.innerHTML = `
             <div class="text-center animate-slide-up">
-                <div class="w-16 h-16 mx-auto bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 text-2xl mb-4 border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
-                    <i class="fa-solid fa-check-double"></i>
+                <div class="w-16 h-16 mx-auto rounded-full flex items-center justify-center text-2xl mb-4 border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                    <i class="fa-solid fa-check-double text-emerald-400"></i>
                 </div>
-                <h2 class="text-xl font-black text-white uppercase tracking-tight mb-1">Audit Approved</h2>
-                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-6">Official Gazette Notification</p>
+                <h2 class="text-xl font-black uppercase tracking-tight mb-1">Audit Approved</h2>
+                <p class="text-[10px] font-bold uppercase tracking-widest mb-6 opacity-60">Official Gazette Notification</p>
                 
-                <div class="bg-slate-800/50 rounded-xl border border-white/5 p-1 mb-6">
-                    <div class="grid grid-cols-2 gap-px bg-slate-700/50 border border-white/5 overflow-hidden rounded-lg">
-                        <div class="bg-slate-900/80 p-3 text-left">
-                            <div class="text-[9px] font-bold text-slate-500 uppercase">Dept. of Archives</div>
-                            <div class="text-xs font-mono text-white">Question Bank</div>
+                <div class="premium-panel p-1 mb-6">
+                    <div class="grid grid-cols-2 gap-px overflow-hidden rounded-lg">
+                        <div class="p-3 text-left">
+                            <div class="text-[9px] font-bold opacity-60 uppercase">Dept. of Archives</div>
+                            <div class="text-xs font-mono">Question Bank</div>
                         </div>
-                        <div class="bg-slate-900/80 p-3 text-right">
+                        <div class="p-3 text-right">
                             <div class="text-xs font-mono font-bold text-blue-400">${questionsSize} KB</div>
                         </div>
 
-                        <div class="bg-slate-900/80 p-3 text-left">
-                            <div class="text-[9px] font-bold text-slate-500 uppercase">Service Record</div>
-                            <div class="text-xs font-mono text-white">Exam History</div>
+                        <div class="p-3 text-left">
+                            <div class="text-[9px] font-bold opacity-60 uppercase">Service Record</div>
+                            <div class="text-xs font-mono">Exam History</div>
                         </div>
-                        <div class="bg-slate-900/80 p-3 text-right">
+                        <div class="p-3 text-right">
                             <div class="text-xs font-mono font-bold text-purple-400">${historySize} KB</div>
                         </div>
 
-                        <div class="bg-slate-900/80 p-3 text-left">
-                            <div class="text-[9px] font-bold text-slate-500 uppercase">Intel Bureau</div>
-                            <div class="text-xs font-mono text-white">Academic Stats</div>
+                        <div class="p-3 text-left">
+                            <div class="text-[9px] font-bold opacity-60 uppercase">Intel Bureau</div>
+                            <div class="text-xs font-mono">Academic Stats</div>
                         </div>
-                        <div class="bg-slate-900/80 p-3 text-right">
+                        <div class="p-3 text-right">
                             <div class="text-xs font-mono font-bold text-emerald-400">${academicSize} KB</div>
                         </div>
                     </div>
                     
-                    <div class="flex items-center justify-between p-4 border-t border-white/5 mt-1 bg-white/5 rounded-b-lg">
-                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Bureaucratic Burden</span>
-                        <span class="text-sm font-black text-white font-mono">${(totalSize/1024).toFixed(2)} MB</span>
+                    <div class="flex items-center justify-between p-4 border-t border-white/5 mt-1 rounded-b-lg">
+                        <span class="text-[10px] font-black opacity-40 uppercase tracking-widest">Total Bureaucratic Burden</span>
+                        <span class="text-sm font-black font-mono">${(totalSize/1024).toFixed(2)} MB</span>
                     </div>
                 </div>
 
@@ -253,14 +255,15 @@ export const UISettings = {
     // ============================================================
 
     _getHeaderTemplate() {
+        // REFACTOR: Removed bg-slate-900, text colors.
         return `
-        <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-white/5 px-6 pt-12 pb-4 mb-6">
+        <header class="sticky top-0 z-30 px-6 pt-12 pb-4 mb-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Control Center</h2>
-                    <h1 class="text-2xl font-black text-white tracking-tight">Settings</h1>
+                    <h2 class="text-xs font-bold opacity-60 uppercase tracking-widest">Control Center</h2>
+                    <h1 class="premium-text-head text-2xl font-black tracking-tight">Settings</h1>
                 </div>
-                <div class="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400 shadow-lg">
+                <div class="premium-panel w-10 h-10 rounded-full flex items-center justify-center shadow-lg">
                     <i class="fa-solid fa-sliders"></i>
                 </div>
             </div>
@@ -268,18 +271,19 @@ export const UISettings = {
     },
     
     _getSystemPrefsTemplate() {
+        // REFACTOR: Replaced glass-card/glass-panel with premium-card/premium-panel
         return `
         <section class="space-y-3">
-            <label class="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-4">System Preferences</label>
+            <label class="text-[9px] font-black opacity-50 uppercase tracking-widest pl-4">System Preferences</label>
             
-            <div class="glass-card p-5 flex items-center justify-between">
+            <div class="premium-card p-5 flex items-center justify-between">
                 <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-blue-400 border border-blue-500/20">
                         <i class="fa-solid fa-moon"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-white">Appearance</h3>
-                        <p class="text-[9px] font-bold text-slate-500 uppercase">Dark Mode Only</p>
+                        <h3 class="text-sm font-bold">Appearance</h3>
+                        <p class="text-[9px] font-bold opacity-50 uppercase">Dark Mode Only</p>
                     </div>
                 </div>
                 <button onclick="Main.toggleTheme()" class="w-12 h-7 bg-blue-600 rounded-full relative transition-all shadow-inner">
@@ -287,17 +291,17 @@ export const UISettings = {
                 </button>
             </div>
 
-            <button onclick="UISettings.handleCheckStorage()" class="w-full glass-panel p-4 rounded-2xl flex items-center justify-between group hover:bg-amber-500/5 transition-all border border-transparent hover:border-amber-500/20">
+            <button onclick="UISettings.handleCheckStorage()" class="w-full premium-panel p-4 rounded-2xl flex items-center justify-between group transition-all border border-transparent">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-file-invoice"></i>
                     </div>
                     <div class="text-left">
-                        <h3 class="text-xs font-bold text-white group-hover:text-amber-400 transition-colors">Storage Audit</h3>
-                        <p class="text-[9px] font-bold text-slate-500 uppercase">File RTI Application</p>
+                        <h3 class="text-xs font-bold group-hover:text-amber-400 transition-colors">Storage Audit</h3>
+                        <p class="text-[9px] font-bold opacity-50 uppercase">File RTI Application</p>
                     </div>
                 </div>
-                <div class="px-3 py-1.5 rounded-lg bg-slate-800 text-[9px] font-black text-slate-400 border border-white/5 uppercase tracking-wider group-hover:bg-amber-500 group-hover:text-slate-900 transition-all">
+                <div class="px-3 py-1.5 rounded-lg text-[9px] font-black opacity-60 border border-white/5 uppercase tracking-wider group-hover:opacity-100 transition-all">
                     Submit
                 </div>
             </button>
@@ -307,36 +311,37 @@ export const UISettings = {
      
 
     _getDataControlTemplate() {
+        // REFACTOR: Replaced glass-card with premium-card, removed hardcoded text colors
         return `
         <section class="space-y-3">
-            <label class="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-4">Data Persistence</label>
+            <label class="text-[9px] font-black opacity-50 uppercase tracking-widest pl-4">Data Persistence</label>
             
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="UISettings.handleExport()" class="glass-card p-4 flex flex-col gap-3 group active:scale-95 transition-transform hover:bg-white/5">
-                    <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20 group-hover:scale-110 transition-transform">
+                <button onclick="UISettings.handleExport()" class="premium-card p-4 flex flex-col gap-3 group active:scale-95 transition-transform">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-blue-400 border border-blue-500/20 group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-cloud-arrow-down text-lg"></i>
                     </div>
                     <div>
-                        <h3 class="text-xs font-black text-white uppercase">Backup</h3>
-                        <p class="text-[9px] font-bold text-slate-500 uppercase group-hover:text-blue-400 transition-colors">Save JSON</p>
+                        <h3 class="text-xs font-black uppercase">Backup</h3>
+                        <p class="text-[9px] font-bold opacity-50 uppercase group-hover:text-blue-400 transition-colors">Save JSON</p>
                     </div>
                 </button>
 
-                <button onclick="UISettings.handleImport()" class="glass-card p-4 flex flex-col gap-3 group active:scale-95 transition-transform hover:bg-white/5">
-                    <div class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/20 group-hover:scale-110 transition-transform">
+                <button onclick="UISettings.handleImport()" class="premium-card p-4 flex flex-col gap-3 group active:scale-95 transition-transform">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-purple-400 border border-purple-500/20 group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-file-import text-lg"></i>
                     </div>
                     <div>
-                        <h3 class="text-xs font-black text-white uppercase">Restore</h3>
-                        <p class="text-[9px] font-bold text-slate-500 uppercase group-hover:text-purple-400 transition-colors">Load JSON</p>
+                        <h3 class="text-xs font-black uppercase">Restore</h3>
+                        <p class="text-[9px] font-bold opacity-50 uppercase group-hover:text-purple-400 transition-colors">Load JSON</p>
                     </div>
                 </button>
             </div>
             
-                        <div class="pt-2 mb-3">
-                <button onclick="UISettings.handleRepair()" class="w-full glass-card p-5 flex items-center justify-between border-amber-500/30 hover:border-amber-500/60 group active:scale-95 transition-all">
+            <div class="pt-2 mb-3">
+                <button onclick="UISettings.handleRepair()" class="w-full premium-card p-5 flex items-center justify-between border-amber-500/30 hover:border-amber-500/60 group active:scale-95 transition-all">
                     <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-amber-500">
                             <i class="fa-solid fa-screwdriver-wrench"></i>
                         </div>
                         <div class="text-left">
@@ -350,9 +355,9 @@ export const UISettings = {
 
 
             <div class="pt-2">
-                <button onclick="UISettings.handleReset()" class="w-full glass-card p-5 flex items-center justify-between border-rose-500/30 hover:border-rose-500/60 group active:scale-95 transition-all">
+                <button onclick="UISettings.handleReset()" class="w-full premium-card p-5 flex items-center justify-between border-rose-500/30 hover:border-rose-500/60 group active:scale-95 transition-all">
                     <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-500 animate-pulse-slow">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-rose-500 animate-pulse-slow">
                             <i class="fa-solid fa-triangle-exclamation"></i>
                         </div>
                         <div class="text-left">
@@ -369,31 +374,28 @@ export const UISettings = {
     },
 
     _getIntelligenceTemplate() {
+        // REFACTOR: Removed gradient overlays and glass-card
         return `
         <section class="space-y-3">
-            <label class="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-4">App Intelligence</label>
+            <label class="text-[9px] font-black opacity-50 uppercase tracking-widest pl-4">App Intelligence</label>
             
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="UISettings.openModal('techBrief')" class="glass-card p-4 relative overflow-hidden group active:scale-95 transition-transform">
-                    <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    
+                <button onclick="UISettings.openModal('techBrief')" class="premium-card p-4 relative overflow-hidden group active:scale-95 transition-transform">
                     <div class="relative z-10 flex flex-col gap-3">
                         <i class="fa-solid fa-microchip text-cyan-400 text-xl"></i>
                         <div>
-                            <h3 class="text-xs font-black text-white uppercase">Logic Core</h3>
-                            <p class="text-[9px] font-bold text-slate-500 uppercase">Architecture</p>
+                            <h3 class="text-xs font-black uppercase">Logic Core</h3>
+                            <p class="text-[9px] font-bold opacity-50 uppercase">Architecture</p>
                         </div>
                     </div>
                 </button>
                 
-                <button onclick="UISettings.openModal('techFAQ')" class="glass-card p-4 relative overflow-hidden group active:scale-95 transition-transform">
-                    <div class="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    
+                <button onclick="UISettings.openModal('techFAQ')" class="premium-card p-4 relative overflow-hidden group active:scale-95 transition-transform">
                     <div class="relative z-10 flex flex-col gap-3">
                         <i class="fa-solid fa-code text-amber-400 text-xl"></i>
                         <div>
-                            <h3 class="text-xs font-black text-white uppercase">Tech FAQ</h3>
-                            <p class="text-[9px] font-bold text-slate-500 uppercase">How it works</p>
+                            <h3 class="text-xs font-black uppercase">Tech FAQ</h3>
+                            <p class="text-[9px] font-bold opacity-50 uppercase">How it works</p>
                         </div>
                     </div>
                 </button>
@@ -402,66 +404,66 @@ export const UISettings = {
     },
 
     _getMissionTemplate() {
+        // REFACTOR: Replaced glass-card with premium-card
         return `
         <section class="space-y-3">
-            <label class="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-4">Mission Universal</label>
+            <label class="text-[9px] font-black opacity-50 uppercase tracking-widest pl-4">Mission Universal</label>
             
-            <button onclick="UISettings.openModal('orientation')" class="w-full glass-card p-5 flex items-center justify-between group active:scale-95 transition-transform">
+            <button onclick="UISettings.openModal('orientation')" class="w-full premium-card p-5 flex items-center justify-between group active:scale-95 transition-transform">
                 <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)] group-hover:shadow-[0_0_25px_rgba(99,102,241,0.4)] transition-shadow">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)] group-hover:shadow-[0_0_25px_rgba(99,102,241,0.4)] transition-shadow">
                         <i class="fa-solid fa-microphone-lines"></i>
                     </div>
                     <div class="text-left">
-                        <h3 class="text-xs font-black text-white group-hover:text-indigo-300 transition-colors">Orientation</h3>
-                        <p class="text-[9px] font-bold text-slate-500 uppercase">Poet Pradeep Tripathi</p>
+                        <h3 class="text-xs font-black group-hover:text-indigo-300 transition-colors">Orientation</h3>
+                        <p class="text-[9px] font-bold opacity-50 uppercase">Poet Pradeep Tripathi</p>
                     </div>
                 </div>
-                <div class="w-8 h-8 rounded-full border border-white/5 flex items-center justify-center text-slate-500 group-hover:bg-white/10 group-hover:text-white transition-all">
+                <div class="w-8 h-8 rounded-full border border-white/5 flex items-center justify-center opacity-50 group-hover:bg-white/10 group-hover:opacity-100 transition-all">
                     <i class="fa-solid fa-play text-[10px]"></i>
                 </div>
             </button>
             
-            <button onclick="UISettings.openModal('motive')" class="w-full glass-card p-5 flex items-center justify-between group active:scale-95 transition-transform">
+            <button onclick="UISettings.openModal('motive')" class="w-full premium-card p-5 flex items-center justify-between group active:scale-95 transition-transform">
                 <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-full bg-pink-500/10 flex items-center justify-center text-pink-400 shadow-[0_0_15px_rgba(236,72,153,0.2)]">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-pink-400 shadow-[0_0_15px_rgba(236,72,153,0.2)]">
                         <i class="fa-solid fa-heart"></i>
                     </div>
                     <div class="text-left">
-                        <h3 class="text-xs font-black text-white group-hover:text-pink-300 transition-colors">The Vision</h3>
-                        <p class="text-[9px] font-bold text-slate-500 uppercase">Gyan Amala Logic</p>
+                        <h3 class="text-xs font-black group-hover:text-pink-300 transition-colors">The Vision</h3>
+                        <p class="text-[9px] font-bold opacity-50 uppercase">Gyan Amala Logic</p>
                     </div>
                 </div>
-                <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition-colors"></i>
+                <i class="fa-solid fa-chevron-right opacity-60 group-hover:opacity-100 transition-colors"></i>
             </button>
         </section>`;
     },
 
     _getCreatorTemplate() {
+        // REFACTOR: Replaced glass-card with premium-card, removed gradient
         return `
         <section class="space-y-3">
-            <label class="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-4">The Estate</label>
+            <label class="text-[9px] font-black opacity-50 uppercase tracking-widest pl-4">The Estate</label>
             
-            <button onclick="UISettings.openModal('aboutCreator')" class="w-full glass-card p-6 relative overflow-hidden group active:scale-95 transition-transform">
-                <div class="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent opacity-50"></div>
-                
+            <button onclick="UISettings.openModal('aboutCreator')" class="w-full premium-card p-6 relative overflow-hidden group active:scale-95 transition-transform">
                 <div class="relative z-10 flex flex-col items-center text-center gap-2">
-                    <div class="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 text-xl mb-1 shadow-[0_0_20px_rgba(245,158,11,0.2)] group-hover:scale-110 transition-transform duration-300">
+                    <div class="w-14 h-14 rounded-full border border-amber-500/20 flex items-center justify-center text-amber-500 text-xl mb-1 shadow-[0_0_20px_rgba(245,158,11,0.2)] group-hover:scale-110 transition-transform duration-300">
                         <i class="fa-solid fa-user-tie"></i>
                     </div>
-                    <h3 class="text-sm font-black text-white uppercase tracking-tight">About Creator</h3>
+                    <h3 class="text-sm font-black uppercase tracking-tight">About Creator</h3>
                     <p class="text-[9px] font-bold text-amber-500 uppercase tracking-[0.2em] group-hover:tracking-[0.3em] transition-all">Ekam Satyam</p>
                 </div>
             </button>
 
             <div class="pt-2">
-                 <button onclick="UISettings.openModal('roastMenu')" class="w-full glass-card p-5 flex items-center justify-between border-rose-500/20 hover:border-rose-500/40 group active:scale-95 transition-all">
+                 <button onclick="UISettings.openModal('roastMenu')" class="w-full premium-card p-5 flex items-center justify-between border-rose-500/20 hover:border-rose-500/40 group active:scale-95 transition-all">
                     <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-500">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-rose-500">
                             <i class="fa-solid fa-fire"></i>
                         </div>
                         <div class="text-left">
                             <h3 class="text-xs font-black text-rose-400">Roast Me</h3>
-                            <p class="text-[9px] font-bold text-slate-500 uppercase">Demotivating Feedback</p>
+                            <p class="text-[9px] font-bold opacity-50 uppercase">Demotivating Feedback</p>
                         </div>
                     </div>
                     <i class="fa-solid fa-chevron-right text-rose-500/30 group-hover:text-rose-500 transition-colors"></i>
@@ -471,29 +473,30 @@ export const UISettings = {
     },
 
     _getFooterTemplate() {
+        // REFACTOR: Replaced glass-panel with premium-panel, removed text-slate-400
         return `
         <footer class="pt-4 pb-8 space-y-6">
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="UISettings.openModal('disclaimer')" class="glass-panel p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors">
+                <button onclick="UISettings.openModal('disclaimer')" class="premium-panel p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors">
                     <i class="fa-solid fa-circle-exclamation text-rose-500 text-xs"></i>
-                    <span class="text-[9px] font-bold uppercase text-slate-400">Disclaimer</span>
+                    <span class="text-[9px] font-bold uppercase opacity-60">Disclaimer</span>
                 </button>
-                <button onclick="UISettings.openModal('privacy')" class="glass-panel p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors">
+                <button onclick="UISettings.openModal('privacy')" class="premium-panel p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors">
                     <i class="fa-solid fa-user-shield text-teal-500 text-xs"></i>
-                    <span class="text-[9px] font-bold uppercase text-slate-400">Privacy</span>
+                    <span class="text-[9px] font-bold uppercase opacity-60">Privacy</span>
                 </button>
-                <button onclick="UISettings.openModal('terms')" class="glass-panel p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors">
-                    <i class="fa-solid fa-scale-balanced text-slate-500 text-xs"></i>
-                    <span class="text-[9px] font-bold uppercase text-slate-400">Terms</span>
+                <button onclick="UISettings.openModal('terms')" class="premium-panel p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors">
+                    <i class="fa-solid fa-scale-balanced opacity-50 text-xs"></i>
+                    <span class="text-[9px] font-bold uppercase opacity-60">Terms</span>
                 </button>
-                <button onclick="UISettings.openModal('contact')" class="glass-panel p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors">
+                <button onclick="UISettings.openModal('contact')" class="premium-panel p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-colors">
                     <i class="fa-solid fa-headset text-blue-500 text-xs"></i>
-                    <span class="text-[9px] font-bold uppercase text-slate-400">Feedback</span>
+                    <span class="text-[9px] font-bold uppercase opacity-60">Feedback</span>
                 </button>
             </div>
 
             <div class="text-center opacity-30 hover:opacity-100 transition-opacity" onclick="UISettings._handleEasterEgg()">
-                <p class="text-[8px] font-black tracking-[0.3em] uppercase text-white">
+                <p class="text-[8px] font-black tracking-[0.3em] uppercase">
                     Gyan Amala &bull; v${CONFIG.version || '2.0.0'}
                 </p>
             </div>
@@ -513,9 +516,9 @@ export const UISettings = {
         if (!contentHTML) return;
 
         // 2. Inject into Overlay
+        // REFACTOR: Replaced bg-slate-900/backdrop-blur with premium-card styles
         overlay.innerHTML = `
-            <div class="w-full max-w-md mx-4 max-h-[85vh] overflow-hidden relative animate-slide-up
-                bg-slate-900/90 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/50 rounded-[32px] flex flex-col">
+            <div class="premium-card w-full max-w-md mx-4 max-h-[85vh] overflow-hidden relative animate-slide-up rounded-[32px] flex flex-col shadow-2xl">
                 
                 <div class="absolute -top-20 -right-20 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="absolute -bottom-20 -left-20 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -524,8 +527,8 @@ export const UISettings = {
                     ${contentHTML}
                 </div>
 
-                <div class="p-4 bg-slate-900/50 border-t border-white/5 backdrop-blur-md z-20">
-                    <button onclick="UISettings.closeModal()" class="w-full py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95">
+                <div class="p-4 border-t border-white/5 z-20">
+                    <button onclick="UISettings.closeModal()" class="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95">
                         Close
                     </button>
                 </div>
@@ -583,7 +586,7 @@ export const UISettings = {
                 <div class="w-16 h-16 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl mb-4 shadow-lg shadow-cyan-500/30">
                     <i class="fa-solid fa-microchip"></i>
                 </div>
-                <h2 class="text-2xl font-black text-white uppercase tracking-tight">Intelligence Brief</h2>
+                <h2 class="text-2xl font-black uppercase tracking-tight">Intelligence Brief</h2>
                 <p class="text-[9px] font-bold text-cyan-400 uppercase tracking-widest">System Architecture</p>
             </div>
 
@@ -591,36 +594,36 @@ export const UISettings = {
                 <div class="relative pl-6 border-l-2 border-slate-700">
                     <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-slate-800 border-2 border-purple-500"></div>
                     <h3 class="text-sm font-black text-purple-400 uppercase tracking-wide mb-2">1. The Predictive Oracle</h3>
-                    <p class="text-xs text-slate-300 leading-relaxed text-justify mb-2 font-light">
-                        Built on a <b class="text-white">Weighted Exponential Moving Average (WEMA)</b>. Unlike simple averages, this gives 60% weight to your recent performance.
+                    <p class="text-xs opacity-80 leading-relaxed text-justify mb-2 font-light">
+                        Built on a <b class="opacity-100">Weighted Exponential Moving Average (WEMA)</b>. Unlike simple averages, this gives 60% weight to your recent performance.
                     </p>
-                    <ul class="text-[10px] text-slate-400 space-y-1 ml-1">
-                        <li>• <b class="text-slate-200">Decay Factor:</b> Scores drop by 5% weekly if inactive.</li>
-                        <li>• <b class="text-slate-200">Confidence Interval:</b> Requires min 5 quizzes to predict.</li>
+                    <ul class="text-[10px] opacity-60 space-y-1 ml-1">
+                        <li>• <b class="opacity-100">Decay Factor:</b> Scores drop by 5% weekly if inactive.</li>
+                        <li>• <b class="opacity-100">Confidence Interval:</b> Requires min 5 quizzes to predict.</li>
                     </ul>
                 </div>
 
                 <div class="relative pl-6 border-l-2 border-slate-700">
                     <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-slate-800 border-2 border-emerald-500"></div>
                     <h3 class="text-sm font-black text-emerald-400 uppercase tracking-wide mb-2">2. Passive Sensing</h3>
-                    <p class="text-xs text-slate-300 leading-relaxed text-justify mb-2 font-light">
-                        Tracks discipline via <b class="text-white">DOM Event Listeners</b>, not manual logs.
+                    <p class="text-xs opacity-80 leading-relaxed text-justify mb-2 font-light">
+                        Tracks discipline via <b class="opacity-100">DOM Event Listeners</b>, not manual logs.
                     </p>
-                    <ul class="text-[10px] text-slate-400 space-y-1 ml-1">
-                        <li>• <b class="text-slate-200">Active Focus:</b> Tab switching pauses the "Study Timer".</li>
-                        <li>• <b class="text-slate-200">Silent Gap Analysis:</b> Infers sleep quality from login times.</li>
+                    <ul class="text-[10px] opacity-60 space-y-1 ml-1">
+                        <li>• <b class="opacity-100">Active Focus:</b> Tab switching pauses the "Study Timer".</li>
+                        <li>• <b class="opacity-100">Silent Gap Analysis:</b> Infers sleep quality from login times.</li>
                     </ul>
                 </div>
 
                 <div class="relative pl-6 border-l-2 border-slate-700">
                     <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-slate-800 border-2 border-blue-500"></div>
                     <h3 class="text-sm font-black text-blue-400 uppercase tracking-wide mb-2">3. Local-First Infra</h3>
-                    <p class="text-xs text-slate-300 leading-relaxed text-justify mb-2 font-light">
-                        <b class="text-white">Serverless & Private.</b> Data lives in IndexedDB.
+                    <p class="text-xs opacity-80 leading-relaxed text-justify mb-2 font-light">
+                        <b class="opacity-100">Serverless & Private.</b> Data lives in IndexedDB.
                     </p>
-                    <ul class="text-[10px] text-slate-400 space-y-1 ml-1">
-                        <li>• <b class="text-slate-200">Drift-Proof Timing:</b> Recursive correction loop.</li>
-                        <li>• <b class="text-slate-200">Offline Capable:</b> Works without internet (PWA).</li>
+                    <ul class="text-[10px] opacity-60 space-y-1 ml-1">
+                        <li>• <b class="opacity-100">Drift-Proof Timing:</b> Recursive correction loop.</li>
+                        <li>• <b class="opacity-100">Offline Capable:</b> Works without internet (PWA).</li>
                     </ul>
                 </div>
             </div>
@@ -628,20 +631,21 @@ export const UISettings = {
     },
     
    _renderStorageBureaucrat() {
+        // REFACTOR: Removed bg-slate-800, kept structural classes
         return `
         <div id="sarkari-container" class="p-8 pb-12 text-center">
             <div class="relative w-24 h-24 mx-auto mb-8">
                 <div class="absolute inset-0 bg-amber-500 rounded-full blur-2xl opacity-20 animate-pulse"></div>
                 
-                <div id="sarkari-icon" class="relative w-full h-full bg-slate-800 border border-amber-500/30 rounded-full flex items-center justify-center text-4xl text-amber-500 shadow-xl transition-transform duration-200">
+                <div id="sarkari-icon" class="premium-panel relative w-full h-full border border-amber-500/30 rounded-full flex items-center justify-center text-4xl text-amber-500 shadow-xl transition-transform duration-200">
                     <i class="fa-solid fa-stamp"></i>
                 </div>
 
-                <div class="absolute -right-4 top-0 text-slate-600 text-xl animate-bounce" style="animation-delay: 0.1s"><i class="fa-solid fa-file"></i></div>
-                <div class="absolute -left-2 bottom-0 text-slate-600 text-lg animate-bounce" style="animation-delay: 0.3s"><i class="fa-solid fa-file-lines"></i></div>
+                <div class="absolute -right-4 top-0 opacity-60 text-xl animate-bounce" style="animation-delay: 0.1s"><i class="fa-solid fa-file"></i></div>
+                <div class="absolute -left-2 bottom-0 opacity-60 text-lg animate-bounce" style="animation-delay: 0.3s"><i class="fa-solid fa-file-lines"></i></div>
             </div>
 
-            <h2 class="text-2xl font-black text-white uppercase tracking-tight mb-2">Audit In Progress</h2>
+            <h2 class="text-2xl font-black uppercase tracking-tight mb-2">Audit In Progress</h2>
             
             <div class="h-8 flex items-center justify-center">
                 <p id="sarkari-status" class="text-[10px] font-bold text-amber-500 uppercase tracking-widest animate-pulse">
@@ -649,46 +653,47 @@ export const UISettings = {
                 </p>
             </div>
 
-            <div class="mt-8 mx-auto w-32 h-1 bg-slate-800 rounded-full overflow-hidden">
+            <div class="mt-8 mx-auto w-32 h-1 bg-white/10 rounded-full overflow-hidden">
                 <div class="h-full bg-amber-500 w-1/3 animate-[shimmer_2s_infinite_linear]"></div>
             </div>
             
-            <p class="text-[10px] text-slate-500 mt-4 italic">"Please stand by. Lunch time is over soon."</p>
+            <p class="text-[10px] opacity-50 mt-4 italic">"Please stand by. Lunch time is over soon."</p>
         </div>`;
     },
 
 
     _renderTechFAQ() {
+        // REFACTOR: Replaced bg-slate-800/50 with premium-panel
         return `
         <div class="p-8 pb-4">
             <div class="flex items-center gap-4 mb-6 text-amber-500">
-                <div class="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-2xl border border-amber-500/20">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center text-2xl border border-amber-500/20">
                     <i class="fa-solid fa-circle-question"></i>
                 </div>
                 <div>
-                    <h2 class="text-xl font-black uppercase tracking-tight text-white">Technical FAQ</h2>
-                    <p class="text-[9px] font-bold text-slate-500 uppercase">Under the Hood</p>
+                    <h2 class="text-xl font-black uppercase tracking-tight">Technical FAQ</h2>
+                    <p class="text-[9px] font-bold opacity-50 uppercase">Under the Hood</p>
                 </div>
             </div>
 
             <div class="space-y-4">
-                <div class="bg-slate-800/50 p-4 rounded-2xl border border-white/5">
+                <div class="premium-panel p-4 rounded-2xl border border-white/5">
                     <h3 class="text-[11px] font-bold text-amber-400 mb-2">Q: Why did my score drop overnight?</h3>
-                    <p class="text-[10px] text-slate-300 leading-relaxed">
-                        The <b class="text-white">Forgetting Curve</b> algorithm applies a decay penalty if you haven't revised a subject in 7 days.
+                    <p class="text-[10px] opacity-80 leading-relaxed">
+                        The <b class="opacity-100">Forgetting Curve</b> algorithm applies a decay penalty if you haven't revised a subject in 7 days.
                     </p>
                 </div>
 
-                <div class="bg-slate-800/50 p-4 rounded-2xl border border-white/5">
+                <div class="premium-panel p-4 rounded-2xl border border-white/5">
                     <h3 class="text-[11px] font-bold text-amber-400 mb-2">Q: Where is my data?</h3>
-                    <p class="text-[10px] text-slate-300 leading-relaxed">
-                        100% on this device. If you clear browser cache, it's gone. Use <b class="text-white">Backup</b> frequently.
+                    <p class="text-[10px] opacity-80 leading-relaxed">
+                        100% on this device. If you clear browser cache, it's gone. Use <b class="opacity-100">Backup</b> frequently.
                     </p>
                 </div>
 
-                <div class="bg-slate-800/50 p-4 rounded-2xl border border-white/5">
+                <div class="premium-panel p-4 rounded-2xl border border-white/5">
                     <h3 class="text-[11px] font-bold text-amber-400 mb-2">Q: Is the "Psych Profile" real?</h3>
-                    <p class="text-[10px] text-slate-300 leading-relaxed">
+                    <p class="text-[10px] opacity-80 leading-relaxed">
                         It is heuristic-based. We measure reaction time (<1s = Impulsive) and answer switching (Doubt) to build the profile.
                     </p>
                 </div>
@@ -705,15 +710,15 @@ export const UISettings = {
         <div class="p-8 text-center">
             <div class="relative w-24 h-24 mx-auto mb-8 group">
                 <div class="absolute inset-0 bg-indigo-500 rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity animate-pulse-slow"></div>
-                <div class="relative w-full h-full bg-slate-800/50 border border-white/10 rounded-full flex items-center justify-center text-4xl text-indigo-400">
+                <div class="relative w-full h-full bg-white/5 border border-white/10 rounded-full flex items-center justify-center text-4xl text-indigo-400">
                     <i class="fa-solid fa-headphones"></i>
                 </div>
             </div>
 
-            <h2 class="text-2xl font-display font-black text-white mb-2 uppercase tracking-tight">Orientation</h2>
+            <h2 class="text-2xl font-display font-black mb-2 uppercase tracking-tight">Orientation</h2>
             <p class="text-[10px] font-bold text-indigo-300/80 uppercase mb-8 tracking-[0.2em]">Poet PRADEEP TRIPATHI</p>
             
-            <div class="bg-black/40 p-4 rounded-3xl border border-white/5 mb-8 flex items-center gap-4 relative overflow-hidden">
+            <div class="premium-panel p-4 rounded-3xl border border-white/5 mb-8 flex items-center gap-4 relative overflow-hidden">
                 <audio id="orientation-audio" src="assets/audio/disclaimer.mp3" preload="metadata" onended="UISettings.resetAudioUI()"></audio>
                 
                 <button id="audio-play-btn" onclick="UISettings.toggleAudio()" 
@@ -732,7 +737,7 @@ export const UISettings = {
                 </div>
             </div>
             
-            <p class="text-xs text-slate-400 italic mb-8 font-serif">"If you are sang-e-marmar, I am your Khajuraho ka majdoor"</p>
+            <p class="text-xs opacity-60 italic mb-8 font-serif">"If you are sang-e-marmar, I am your Khajuraho ka majdoor"</p>
         </div>`;
     },
 
@@ -785,14 +790,14 @@ export const UISettings = {
                 <i class="fa-solid fa-heart"></i>
             </div>
             
-            <h2 class="text-2xl font-black text-white mb-6 uppercase tracking-tight">The Vision</h2>
+            <h2 class="text-2xl font-black mb-6 uppercase tracking-tight">The Vision</h2>
             
-            <div class="space-y-4 text-sm text-slate-300 leading-relaxed text-justify font-light">
+            <div class="space-y-4 text-sm opacity-80 leading-relaxed text-justify font-light">
                 <p>
                     <b class="text-pink-400 font-bold">Gyan Amala</b> (Pure Knowledge) was founded on the principle that elite-level preparation shouldn't cost a fortune.
                 </p>
                 <p>
-                    We leverage <b class="text-pink-400 font-bold">Local-First Architecture</b> to provide you with tools like the <b class="text-white">Predictive Oracle</b> and <b class="text-white">Behavioral Analytics</b> at zero cost. Your device is the server. Your data is yours.
+                    We leverage <b class="text-pink-400 font-bold">Local-First Architecture</b> to provide you with tools like the <b class="opacity-100">Predictive Oracle</b> and <b class="opacity-100">Behavioral Analytics</b> at zero cost. Your device is the server. Your data is yours.
                 </p>
             </div>
         </div>`;
@@ -815,10 +820,9 @@ Details: [Insert your bekaar job offer here]`
 
         return `
         <div class="p-0">
-            <div class="bg-gradient-to-br from-amber-600 to-orange-700 text-white p-10 text-center relative overflow-hidden">
-                <div class="absolute inset-0 bg-black/20 mix-blend-overlay"></div>
+            <div class="premium-card rounded-none rounded-t-2xl p-10 text-center relative overflow-hidden">
                 <div class="relative z-10">
-                    <h2 class="text-3xl font-display font-black mb-2 text-white drop-shadow-md">Ekam Satyam</h2>
+                    <h2 class="text-3xl font-display font-black mb-2 drop-shadow-md">Ekam Satyam</h2>
                     <p class="text-[9px] uppercase tracking-widest opacity-70">Truth is one</p>
                 </div>
             </div>
@@ -826,14 +830,14 @@ Details: [Insert your bekaar job offer here]`
             <div class="p-8 space-y-8">
                 <div>
                     <h3 class="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-3">The Story</h3>
-                    <p class="text-sm text-slate-300 leading-relaxed text-justify font-light">
-                        I am a <b class="text-white">B.A. (Hons) Political Science</b> graduate with absolutely no background in formal coding. <b class="text-amber-400">UPSCSuperApp</b> is an amateur project born out of a week of sleepless nights and collaboration with AI.
+                    <p class="text-sm opacity-80 leading-relaxed text-justify font-light">
+                        I am a <b class="opacity-100">B.A. (Hons) Political Science</b> graduate with absolutely no background in formal coding. <b class="text-amber-400">UPSCSuperApp</b> is an amateur project born out of a week of sleepless nights and collaboration with AI.
                     </p>
                 </div>
 
-                <div class="p-5 bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl border border-white/5">
+                <div class="p-5 premium-panel rounded-3xl border border-white/5">
                     <h3 class="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-3">Professional Disgrace</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed mb-6">
+                    <p class="text-xs opacity-60 leading-relaxed mb-6">
                         If you are an employer and you want to offer me a job (not security guard 🛡️), use the button below.
                     </p>
                     
@@ -859,8 +863,8 @@ Details: [Insert your bekaar job offer here]`
 
         return `
         <div class="p-8 text-center">
-            <h2 class="text-2xl font-black text-white mb-2 uppercase tracking-tight">Roast & Feedback</h2>
-            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-8">Tell the creator how much you hate it</p>
+            <h2 class="text-2xl font-black mb-2 uppercase tracking-tight">Roast & Feedback</h2>
+            <p class="text-[10px] opacity-60 font-bold uppercase tracking-widest mb-8">Tell the creator how much you hate it</p>
             
             <div class="grid grid-cols-2 gap-4">
                 <a href="mailto:${myEmail}?subject=${emailSub}&body=${emailBody}" 
@@ -882,28 +886,29 @@ Details: [Insert your bekaar job offer here]`
         let content = '';
         if (type === 'disclaimer') {
             content = `
-                <ul class="space-y-4 text-xs text-slate-300 list-disc pl-4 leading-relaxed font-light">
+                <ul class="space-y-4 text-xs opacity-80 list-disc pl-4 leading-relaxed font-light">
                     <li><b class="text-rose-400">AI-Generated Content:</b> Questions are generated using AI. Gyan Amala does not guarantee 100% accuracy.</li>
                     <li><b class="text-rose-400">Limitation of Liability:</b> The creator is not liable for exam failures or data loss.</li>
                     <li><b class="text-rose-400">Non-Commercial:</b> This is a portfolio project.</li>
                 </ul>`;
         } else if (type === 'privacy') {
             content = `
-                <ul class="space-y-6 text-xs text-slate-300">
-                    <li class="flex gap-4 items-start"><div class="w-4 text-teal-400"><i class="fa-solid fa-check"></i></div><div><b class="text-white">Local-First:</b> Data never leaves this device.</div></li>
-                    <li class="flex gap-4 items-start"><div class="w-4 text-teal-400"><i class="fa-solid fa-check"></i></div><div><b class="text-white">Zero Tracking:</b> No analytics, no IPs collected.</div></li>
+                <ul class="space-y-6 text-xs opacity-80">
+                    <li class="flex gap-4 items-start"><div class="w-4 text-teal-400"><i class="fa-solid fa-check"></i></div><div><b class="opacity-100">Local-First:</b> Data never leaves this device.</div></li>
+                    <li class="flex gap-4 items-start"><div class="w-4 text-teal-400"><i class="fa-solid fa-check"></i></div><div><b class="opacity-100">Zero Tracking:</b> No analytics, no IPs collected.</div></li>
                 </ul>`;
         } else {
-            content = `<p class="text-xs text-slate-300 leading-relaxed">Provided 'as is' for educational purposes. Use at your own risk. Don't blame us if you get addicted to the Arcade mode.</p>`;
+            content = `<p class="text-xs opacity-80 leading-relaxed">Provided 'as is' for educational purposes. Use at your own risk. Don't blame us if you get addicted to the Arcade mode.</p>`;
         }
 
         return `
         <div class="p-8">
-            <h2 class="text-xl font-black uppercase tracking-tight text-white mb-6 border-b border-white/10 pb-4">${type.toUpperCase()}</h2>
+            <h2 class="text-xl font-black uppercase tracking-tight mb-6 border-b border-white/10 pb-4">${type.toUpperCase()}</h2>
             ${content}
         </div>`;
     }
 };
 
 window.UISettings = UISettings;
+
 
