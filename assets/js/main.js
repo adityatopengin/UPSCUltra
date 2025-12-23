@@ -1,6 +1,6 @@
 /**
  * MAIN.JS (THE MASTER CONTROLLER)
- * Version: 2.0.0 (Robust Worker Architecture)
+ * Version: 2.1.0 (Patched for Stability)
  * Path: assets/js/main.js
  * Responsibilities:
  * 1. Bootstraps the application (checks DB, Workers, UI).
@@ -11,8 +11,8 @@
 import { DB } from './services/db.js';
 import { DataSeeder } from './services/data-seeder.js'; 
 import { MasterAggregator } from './services/master-aggregator.js';
-import { UI } from './ui/ui-manager.js'; // Assumes you have a UI Manager that loads views
-import { Engine } from './engine/quiz-engine.js'; // The new Engine module
+import { UI } from './ui/ui-manager.js';
+import { Engine } from './engine/quiz-engine.js';
 import { CONFIG } from './config.js';
 
 
@@ -30,47 +30,76 @@ export const Main = {
     // ============================================================
     // 2. INITIALIZATION (BOOT SEQUENCE)
     // ============================================================
-  async init() {
-    console.log(`🚀 ${CONFIG.name} v${CONFIG.version} Booting System...`);
+    async init() {
+        console.log(`🚀 ${CONFIG.name} v${CONFIG.version} Booting System...`);
 
-    try {
-        // 1. Initialize Database (The Foundation)
-        await DB.connect();
-        
-        // 2. RUN GENESIS: Seed Database if empty (CRITICAL NEW STEP)
-        // This ensures the app is never "empty" for the user
-        await DataSeeder.init();
-        
-        // 3. Initialize Services (The Manager)
-        MasterAggregator.init();
+        // GLOBAL ERROR TRAP (Catches unhandled promises)
+        window.addEventListener('unhandledrejection', event => {
+            console.warn("Async Warning:", event.reason);
+            // We don't block the UI for warnings, but we log them.
+        });
 
-        // 4. Load User Preferences (Theme, etc.)
-        await this._loadPreferences();
+        try {
+            // 1. Initialize Database (The Foundation)
+            await DB.connect();
+            
+            // 2. RUN GENESIS: Seed Database if empty
+            if (window.DataSeeder) {
+                await DataSeeder.init();
+            } else {
+                 console.warn("DataSeeder not loaded. Skipping genesis.");
+            }
+            
+            // 3. Initialize Services (The Manager)
+            // We check if MasterAggregator is loaded to avoid crash
+            if (MasterAggregator && MasterAggregator.init) {
+                MasterAggregator.init();
+            }
 
-        // 5. Start Router (Navigation)
-        this._initRouter();
+            // 4. Initialize UI Shell (Header/Background)
+            if (window.UI) {
+                window.UI.init();
+            }
 
-        // 6. Initial Render
-        if (!window.location.hash) {
-            this.navigate('home');
-        } else {
-            this._handleRoute(); 
+            // 5. Load User Preferences (Theme, etc.)
+            await this._loadPreferences();
+
+            // 6. Start Router (Navigation)
+            this._initRouter();
+
+            // 7. Initial Render
+            // We use a small timeout to ensure the DOM is fully painted
+            setTimeout(() => {
+                if (!window.location.hash) {
+                    this.navigate('home');
+                } else {
+                    this._handleRoute(); 
+                }
+                
+                // CRITICAL: Remove Loader only after render is attempted
+                const loader = document.getElementById('boot-loader');
+                if (loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.style.display = 'none', 500);
+                }
+            }, 100);
+
+            console.log("✅ System Online.");
+
+        } catch (e) {
+            console.error("CRITICAL: Boot Failed", e);
+            // Emergency Error UI
+            document.body.innerHTML = `
+                <div style="padding:40px; color:#f43f5e; text-align:center; font-family:sans-serif; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#0f172a;">
+                    <div style="font-size:40px; margin-bottom:20px;">⚠️</div>
+                    <h2 style="font-size:2rem; margin-bottom:10px; font-weight:900;">SYSTEM FAILURE</h2>
+                    <p style="opacity:0.8; max-width:300px; margin:0 auto;">${e.message}</p>
+                    <button onclick="window.location.reload()" style="margin-top:30px; padding:12px 24px; background:#3b82f6; color:#fff; border:none; border-radius:12px; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(59,130,246,0.3);">
+                        REBOOT SYSTEM
+                    </button>
+                </div>`;
         }
-
-        console.log("✅ System Online.");
-
-    } catch (e) {
-        console.error("CRITICAL: Boot Failed", e);
-        // Show emergency UI
-        document.body.innerHTML = `<div style="padding:20px; color:#f43f5e; text-align:center; font-family:sans-serif; margin-top:30vh;">
-            <h2 style="font-size:2rem; margin-bottom:10px;">⚠️ System Failure</h2>
-            <p style="opacity:0.8;">${e.message}</p>
-            <button onclick="window.location.reload()" style="margin-top:20px; padding:10px 20px; background:#333; color:#fff; border:none; border-radius:8px;">REBOOT SYSTEM</button>
-        </div>`;
-    }
-},
-
-
+    },
     // ============================================================
     // 3. ROUTER (NAVIGATION)
     // ============================================================
@@ -87,11 +116,23 @@ export const Main = {
             this.endQuizSession(); // Clean up timer/workers
         }
 
+        // ZOMBIE FIX: Clean up Arcade loop if we are leaving it
+        // This prevents the game loop from running in background
+        if (this.state.currentView === 'arcade' && viewName !== 'arcade') {
+            if (window.UIArcade && window.UIArcade.quitGame) {
+                window.UIArcade.quitGame();
+            }
+        }
+
         this.state.currentView = viewName;
         
         // Save params to state if needed
         if (params && params.subjectId) {
             this.state.activeSubject = params.subjectId;
+        }
+        // Save result ID for the results view
+        if (params && params.id) {
+            this.state.lastResultId = params.id;
         }
 
         // Update Hash (triggers _handleRoute)
@@ -118,9 +159,9 @@ export const Main = {
         window.scrollTo(0, 0);
 
         // Routing Switch
+        // We check if the View Module is loaded globally before calling render
         switch (hash) {
             case 'home':
-                // We use the UI module to render views
                 if (window.UIHome) await UIHome.render(container);
                 break;
                 
@@ -133,12 +174,10 @@ export const Main = {
                 break;
                 
             case 'arcade':
-                if (window.UIArcade) UIArcade.render(container); // The new Arcade View
+                if (window.UIArcade) UIArcade.render(container);
                 break;
                 
             case 'results':
-                // Results usually need an ID, stored in a global or query param
-                // For MVP, we assume the ID is passed via state or URL params (handled in Part 2)
                 if (window.UIResults) await UIResults.render(container);
                 break;
 
@@ -154,6 +193,7 @@ export const Main = {
         // Update Bottom Dock (UIHeader) active state
         if (window.UIHeader) UIHeader.updateActiveTab(hash);
     },
+
     // ============================================================
     // 4. QUIZ CONTROLLER (SESSION MANAGEMENT)
     // ============================================================
@@ -166,8 +206,12 @@ export const Main = {
         console.log(`Main: Selected Subject -> ${subjectId}`);
         
         // 1. Validation: Does the subject exist in Config?
-        const isPaper1 = CONFIG.subjectsGS1.some(s => s.id === subjectId);
-        const isPaper2 = CONFIG.subjectsCSAT.some(s => s.id === subjectId);
+        // We need robust checking here to prevent undefined errors
+        const gs1 = CONFIG.subjectsGS1 || [];
+        const csat = CONFIG.subjectsCSAT || [];
+        
+        const isPaper1 = gs1.some(s => s.id === subjectId);
+        const isPaper2 = csat.some(s => s.id === subjectId);
         
         if (!isPaper1 && !isPaper2) {
             console.error("Invalid Subject ID");
@@ -175,12 +219,9 @@ export const Main = {
         }
 
         this.state.activeSubject = subjectId;
-
-        // 2. Open Setup Modal (Optional Step)
-        // For MVP, we skip the "Select 10/20 Qs" modal and jump straight to starting the quiz.
-        // In Phase 2, you can call UIModals.openSetup(subjectId) here.
         
-        // 3. Start The Quiz
+        // 2. Start The Quiz
+        // In V2 we skip the modal and go straight to action
         await this.startQuizSession(subjectId);
     },
 
@@ -190,25 +231,26 @@ export const Main = {
     async startQuizSession(subjectId) {
         try {
             // A. Set Loading State (UI feedback)
-            // (You could show a spinner here)
+            if (window.UI) UI.toggleLoader(true);
             
             // B. Handshake with Quiz Engine
-            // This function (to be built in quiz-engine.js) will:
-            // 1. Fetch random questions from DB.js
-            // 2. Initialize the timer
-            // 3. Reset internal score state
-            await Engine.startSession(subjectId); 
+            if (Engine) {
+                await Engine.startSession(subjectId); 
 
-            // C. Update State & Navigate
-            this.state.isQuizActive = true;
-            this.navigate('quiz');
+                // C. Update State & Navigate
+                this.state.isQuizActive = true;
+                this.navigate('quiz');
+            } else {
+                throw new Error("Quiz Engine not loaded");
+            }
 
         } catch (e) {
             console.error("Main: Failed to start quiz", e);
             alert("Error starting quiz. Please check database connection.");
+        } finally {
+            if (window.UI) UI.toggleLoader(false);
         }
     },
-
     /**
      * Called by the Quiz Engine when time is up or user submits.
      * @param {Object} resultData - The final score object
@@ -220,7 +262,6 @@ export const Main = {
 
         // 1. Navigate to Results View
         // We pass the result ID so the view can fetch details from DB
-        // (Assuming Engine has already saved the result to DB 'history')
         this.navigate('results', { id: resultData.id });
     },
 
@@ -229,7 +270,12 @@ export const Main = {
      */
     endQuizSession() {
         console.warn("Main: Aborting Quiz Session.");
-        Engine.terminateSession(); // Stop timers
+        
+        // Safety check before calling Engine methods
+        if (Engine && Engine.terminateSession) {
+            Engine.terminateSession(); // Stop timers
+        }
+        
         this.state.isQuizActive = false;
         this.state.activeSubject = null;
     },
@@ -255,6 +301,9 @@ export const Main = {
     toggleTheme() {
         const isDark = document.documentElement.classList.toggle('dark');
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        
+        // Optional: Notify UI to update if needed
+        if (window.UISettings) UISettings.render(document.getElementById('app-container'));
     },
 
     /**
@@ -273,5 +322,7 @@ window.Main = Main;
 
 // Auto-boot when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    // We already have a safety trap in index.html, but this is the standard entry
     Main.init();
 });
+
