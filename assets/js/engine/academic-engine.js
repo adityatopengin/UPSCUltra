@@ -6,6 +6,7 @@
  * 1. Tracks Knowledge Mastery per subject.
  * 2. Applies "Forgetting Curve" (Time Decay) to scores.
  * 3. Identifies Blind Spots (ignored subjects) and Weaknesses.
+ * * NOTE: This file contains PURE LOGIC. No CSS refactoring required.
  */
 
 import { DB } from '../services/db.js';
@@ -497,3 +498,5 @@ export const AcademicEngine = {
     }
 
 };
+
+
