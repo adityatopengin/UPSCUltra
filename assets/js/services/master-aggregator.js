@@ -1,6 +1,6 @@
-/**
+ /**
  * MASTER AGGREGATOR (THE MANAGER)
- * Version: 2.0.0
+ * Version: 2.1.0 (Fixes Worker Path & Race Conditions)
  * Path: assets/js/services/master-aggregator.js
  * Responsibilities:
  * 1. Orchestrates the "Handshake" between UI and Background Workers.
@@ -48,8 +48,11 @@ export const MasterAggregator = {
 
         if (window.Worker) {
             try {
-                // Spawning the Background Worker (The Heavy Lifter)
-                this.worker = new Worker('assets/js/workers/oracle.worker.js');
+                // FIXED PATH: Uses import.meta.url to find the worker relative to THIS file
+                // This prevents 404 errors if the app is hosted in a subdirectory
+                const workerPath = new URL('../workers/oracle.worker.js', import.meta.url);
+                
+                this.worker = new Worker(workerPath);
                 
                 // Set up the listener for when the Worker finishes
                 this.worker.onmessage = (e) => this._handleWorkerResponse(e);
@@ -65,13 +68,12 @@ export const MasterAggregator = {
 
                 console.log("🔮 OracleWorker Spawned Successfully.");
             } catch (e) {
-                console.warn("🔮 OracleWorker Failed. Will use Main Thread Fallback.", e);
+                console.warn("🔮 OracleWorker Failed path resolution. Will use Main Thread fallback.", e);
             }
         } else {
-            console.warn("🔮 Web Workers not supported in this browser.");
+            console.warn("🔮 Web Workers not supported in this browser. Using Main Thread fallback.");
         }
     },
-
     // ============================================================
     // 3. PUBLIC API: GET PREDICTION
     // ============================================================
@@ -81,52 +83,60 @@ export const MasterAggregator = {
      * Returns a Promise that resolves with the Prediction Result.
      */
     async getPrediction() {
-        // 1. Init if needed
+        // 1. Init if needed (Lazy loading)
         if (!this.worker) this.init();
 
-        // 2. Prevent spamming
+        // 2. Prevent spamming (Debounce)
         if (this.isCalculating) {
             console.warn("🔮 Oracle is already thinking...");
             return null; 
         }
 
-        // 3. Gather Data from the new DB Service
-        const telemetry = await this._gatherTelemetry();
-        
-        // 4. Optimization: Check if data has changed since last time
-        // We hash the input to see if it's identical to the previous run
-        const currentSignature = JSON.stringify(telemetry);
-        if (this.lastPrediction && this.lastDataSignature === currentSignature) {
-            // console.log("🔮 Data unchanged. Returning cached prediction.");
-            return this.lastPrediction;
-        }
-
-        this.isCalculating = true;
-        this.lastDataSignature = currentSignature;
-
-        // 5. Send to Worker
-        return new Promise((resolve) => {
+        try {
+            // 3. Gather Data from the DB Service
+            const telemetry = await this._gatherTelemetry();
             
-            if (this.worker) {
-                // OFF-THREAD: Send data to the background worker
-                this.worker.postMessage({
-                    command: 'RUN_ENSEMBLE',
-                    data: telemetry,
-                    config: this.config
-                });
-
-                // Store the resolve function so we can call it when 'onmessage' fires
-                this._pendingResolve = resolve;
-
-            } else {
-                // MAIN-THREAD FALLBACK (For older phones or error states)
-                console.warn("🔮 Running simulation on Main Thread (Low Power Mode).");
-                const fallbackResult = this._runFallbackSimulation(telemetry);
-                this.isCalculating = false;
-                resolve(fallbackResult);
+            // 4. Optimization: Check if data has changed since last time
+            // We hash the input to see if it's identical to the previous run
+            const currentSignature = JSON.stringify(telemetry);
+            if (this.lastPrediction && this.lastDataSignature === currentSignature) {
+                return this.lastPrediction;
             }
-        });
+
+            this.isCalculating = true;
+            this.lastDataSignature = currentSignature;
+
+            // 5. Send to Worker (or Fallback)
+            return new Promise((resolve) => {
+                
+                if (this.worker) {
+                    // OFF-THREAD: Send data to the background worker
+                    this.worker.postMessage({
+                        command: 'RUN_ENSEMBLE',
+                        data: telemetry,
+                        config: this.config
+                    });
+
+                    // Store the resolve function so we can call it when 'onmessage' fires
+                    this._pendingResolve = resolve;
+
+                } else {
+                    // MAIN-THREAD FALLBACK (For older phones or error states)
+                    console.warn("🔮 Running simulation on Main Thread (Low Power Mode).");
+                    const fallbackResult = this._runFallbackSimulation(telemetry);
+                    
+                    this.isCalculating = false;
+                    this.lastPrediction = fallbackResult;
+                    resolve(fallbackResult);
+                }
+            });
+        } catch (e) {
+            console.error("🔮 Prediction Failed:", e);
+            this.isCalculating = false;
+            return null;
+        }
     },
+
     // ============================================================
     // 4. DATA COLLECTION (THE INPUT LAYER)
     // ============================================================
@@ -137,22 +147,30 @@ export const MasterAggregator = {
      */
     async _gatherTelemetry() {
         // A. Fetch Academic State (Mastery & Decay)
-        // We get all subjects to build the full knowledge map.
         const academicState = {};
-        const academicRaw = await DB.getAll('academic_state');
         
-        if (academicRaw && academicRaw.length > 0) {
-            academicRaw.forEach(item => {
-                academicState[item.subjectId] = item;
-            });
-        } else {
-            // Cold Start: No data yet. Worker will handle empty state.
-            console.warn("🔮 Oracle: No academic data found. Using cold-start defaults.");
+        try {
+            // Guard: Ensure DB is connected
+            await DB.connect();
+            const academicRaw = await DB.getAll('academic_state');
+            
+            if (academicRaw && academicRaw.length > 0) {
+                academicRaw.forEach(item => {
+                    academicState[item.subjectId] = item;
+                });
+            }
+        } catch (e) {
+            console.warn("🔮 Oracle: Academic data fetch failed (Cold Start).", e);
         }
 
         // B. Fetch Behavioral Profile (Psych Analysis)
-        // We grab the current user's profile (defaulting to 'user_1' for now)
-        let behavioralProfile = await DB.get('profiles', 'user_1');
+        let behavioralProfile = null;
+        try {
+            // We grab the current user's profile (defaulting to 'user_1')
+            behavioralProfile = await DB.get('profiles', 'user_1');
+        } catch (e) {
+            // Ignore error, use default below
+        }
         
         // If missing, use a safe default (The "Average Aspirant" profile)
         if (!behavioralProfile) {
@@ -166,7 +184,12 @@ export const MasterAggregator = {
         }
 
         // C. Meta Data for Pattern Recognition
-        const historyCount = await DB.get('history', 'count') || 0; // Simplified count check
+        let historyCount = 0;
+        try {
+            // DB.count helper would be nice, but getting all keys is okay for MVP
+            const historyKeys = await DB.getRandomKeys('history', null, null, 10000); 
+            historyCount = historyKeys.length;
+        } catch (e) { console.warn("History count failed"); }
         
         return {
             academic: academicState,
@@ -177,7 +200,6 @@ export const MasterAggregator = {
             }
         };
     },
-
     // ============================================================
     // 5. WORKER RESPONSE HANDLER
     // ============================================================
@@ -186,7 +208,6 @@ export const MasterAggregator = {
         const { status, result } = e.data;
 
         if (status === 'SUCCESS') {
-            // console.log("🔮 Oracle Prediction Received:", result);
             this.lastPrediction = result;
             this.isCalculating = false;
 
@@ -198,6 +219,9 @@ export const MasterAggregator = {
 
             // Broadcast Event (Optional: For other UI components listening)
             window.dispatchEvent(new CustomEvent('oracle-update', { detail: result }));
+        } else {
+            console.error("🔮 Oracle Worker reported error:", e.data.message);
+            this.isCalculating = false;
         }
     },
 
@@ -245,7 +269,9 @@ export const MasterAggregator = {
         }
 
         // 3. Generate "Probability Cloud" Data for Charts
-        const bellCurveData = this._generateBellCurvePoints(score, prediction.range);
+        // We handle missing range data gracefully
+        const range = prediction.range || { min: score * 0.9, max: score * 1.1 };
+        const bellCurveData = this._generateBellCurvePoints(score, range);
 
         return {
             displayScore: score,
@@ -283,9 +309,13 @@ export const MasterAggregator = {
     // ============================================================
 
     _getDaysToExam() {
-        const examDate = new Date('2025-05-25'); // UPSC Prelims 2025
-        const diff = examDate - new Date();
-        return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+        try {
+            const examDate = new Date('2025-05-25'); // UPSC Prelims 2025
+            const diff = examDate - new Date();
+            return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+        } catch (e) {
+            return 100; // Safe default
+        }
     },
 
     /**
@@ -300,12 +330,16 @@ export const MasterAggregator = {
             totalScore += (sub.mastery || 0) * (sub.weight || 0) * 2;
         });
 
+        // Ensure reasonable bounds
+        const safeScore = Math.max(0, Math.min(200, Math.round(totalScore)));
+
         return {
-            score: Math.round(totalScore),
-            range: { min: totalScore * 0.9, max: totalScore * 1.1 },
+            score: safeScore,
+            range: { min: safeScore * 0.85, max: safeScore * 1.15 },
             confidence: 0.5,
             flags: ["LOW_POWER_MODE"], 
-            breakdown: { mc: 0, bayesian: 0, pattern: 0 }
+            breakdown: { mc: safeScore, bayesian: safeScore, pattern: safeScore }
         };
     }
 };
+
