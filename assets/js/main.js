@@ -71,9 +71,13 @@ export const Main = {
 
         } catch (e) {
             console.error("CRITICAL: Boot Failed", e);
-            // Emergency Alert
+            // Emergency Alert - REFACTORED to Premium Style
             const loader = document.getElementById('boot-loader');
-            if(loader) loader.innerHTML = `<div class="text-red-500 p-8 text-center font-bold">BOOT FAILURE<br><span class="text-xs text-gray-400">${e.message}</span></div>`;
+            if(loader) loader.innerHTML = `
+                <div class="premium-panel p-8 text-center font-bold" style="color: var(--danger)">
+                    BOOT FAILURE<br>
+                    <span class="text-xs opacity-70">${e.message}</span>
+                </div>`;
         }
     },
 
