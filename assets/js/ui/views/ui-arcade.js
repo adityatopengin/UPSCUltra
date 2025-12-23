@@ -35,7 +35,8 @@ export const UIArcade = {
         
         // 1. Clear & Setup
         container.innerHTML = '';
-        container.className = 'view-container pb-24 bg-slate-900 min-h-screen';
+        // REFACTOR: Removed bg-slate-900. Increased padding to pb-40.
+        container.className = 'view-container pb-40 min-h-screen';
 
         // 2. Render Dashboard (Menu)
         container.innerHTML = this._getDashboardTemplate();
@@ -51,45 +52,45 @@ export const UIArcade = {
         // Fetch modes from CONFIG.arcadeModes
         const modes = CONFIG.arcadeModes || [];
 
+        // REFACTOR: Replaced glass-card with premium-card. Removed dynamic bg color classes for text/border.
         const cardsHTML = modes.map(mode => `
-            <button onclick="UIArcade.launchGame('${mode.id}')" class="glass-card w-full p-6 text-left group relative overflow-hidden transition-all duration-300 hover:scale-[1.02]">
-                
-                <div class="absolute -right-4 -top-4 w-24 h-24 bg-${mode.color}-500/20 rounded-full blur-2xl transition-all group-hover:bg-${mode.color}-500/30"></div>
+            <button onclick="UIArcade.launchGame('${mode.id}')" class="premium-card w-full p-6 text-left group relative overflow-hidden transition-all duration-300 hover:scale-[1.02]">
                 
                 <div class="relative z-10 flex items-start gap-4">
-                    <div class="w-14 h-14 rounded-2xl bg-${mode.color}-500/10 text-${mode.color}-400 border border-${mode.color}-500/20 flex items-center justify-center text-2xl shadow-[0_0_15px_rgba(0,0,0,0.3)]">
+                    <div class="w-14 h-14 rounded-2xl premium-panel flex items-center justify-center text-2xl shadow-lg">
                         <i class="fa-solid fa-${mode.icon}"></i>
                     </div>
                     
                     <div class="flex-1">
-                        <h3 class="text-lg font-black text-slate-100 uppercase tracking-wide mb-1">${mode.name}</h3>
-                        <p class="text-xs font-medium text-slate-400 leading-relaxed">${mode.description}</p>
+                        <h3 class="text-lg font-black uppercase tracking-wide mb-1">${mode.name}</h3>
+                        <p class="text-xs font-medium opacity-60 leading-relaxed">${mode.description}</p>
                     </div>
                     
-                    <div class="self-center text-slate-600 group-hover:text-white transition-colors">
+                    <div class="self-center opacity-50 group-hover:opacity-100 transition-colors">
                         <i class="fa-solid fa-chevron-right"></i>
                     </div>
                 </div>
             </button>
         `).join('');
 
+        // REFACTOR: Replaced header styling with standard premium header
         return `
-        <header class="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-md border-b border-white/5 px-6 py-4 flex items-center justify-between safe-area-pt">
+        <header class="sticky top-0 z-30 px-6 py-4 flex items-center justify-between safe-area-pt">
             <div>
-                <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Cognitive Training</h2>
-                <h1 class="text-2xl font-black text-white tracking-tight">Brain Gym</h1>
+                <h2 class="premium-text-head text-xs font-black uppercase tracking-widest mb-1">Cognitive Training</h2>
+                <h1 class="text-2xl font-black tracking-tight">Brain Gym</h1>
             </div>
-            <div class="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400">
+            <div class="w-10 h-10 rounded-full premium-panel flex items-center justify-center opacity-60">
                 <i class="fa-solid fa-dumbbell"></i>
             </div>
         </header>
 
-        <main class="dashboard-grid animate-slide-up">
+        <main class="dashboard-grid animate-slide-up px-4 gap-4 flex flex-col">
             ${cardsHTML}
             
-            <div class="glass-card opacity-50 border-dashed border-slate-700 pointer-events-none p-6 flex flex-col items-center justify-center text-center gap-2">
-                <i class="fa-solid fa-lock text-slate-600 text-2xl"></i>
-                <div class="text-xs font-bold text-slate-500 uppercase">More Modes Locked</div>
+            <div class="premium-card opacity-50 border-dashed pointer-events-none p-6 flex flex-col items-center justify-center text-center gap-2">
+                <i class="fa-solid fa-lock text-2xl opacity-50"></i>
+                <div class="text-xs font-bold opacity-50 uppercase">More Modes Locked</div>
             </div>
         </main>
         `;
@@ -149,22 +150,23 @@ export const UIArcade = {
         const config = CONFIG.arcadeModes.find(m => m.id === gameId);
         const color = config ? config.color : 'blue';
 
+        // REFACTOR: Replaced bg-slate-900 with premium-card (fullscreen mode effectively)
         return `
-        <div class="fixed inset-0 z-50 bg-slate-900 flex flex-col">
+        <div class="fixed inset-0 z-50 view-container flex flex-col">
             
-            <header class="h-20 px-6 flex items-center justify-between bg-slate-900/90 backdrop-blur-md border-b border-white/5 relative z-20">
+            <header class="h-20 px-6 flex items-center justify-between border-b border-white/5 relative z-20">
                 <div class="flex flex-col">
-                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Score</span>
-                    <span id="game-score" class="text-3xl font-black text-white font-mono tracking-tighter">0</span>
+                    <span class="text-[10px] font-bold opacity-50 uppercase tracking-widest">Score</span>
+                    <span id="game-score" class="text-3xl font-black font-mono tracking-tighter">0</span>
                 </div>
 
                 <div class="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
-                    <div class="w-16 h-16 rounded-full bg-${color}-500/20 border border-${color}-500/30 flex items-center justify-center text-${color}-400 text-2xl animate-pulse">
+                    <div class="w-16 h-16 rounded-full premium-panel flex items-center justify-center text-2xl animate-pulse">
                         <i class="fa-solid fa-${config.icon}"></i>
                     </div>
                 </div>
 
-                <button onclick="UIArcade.quitGame()" class="w-10 h-10 rounded-full bg-slate-800 text-slate-400 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center">
+                <button onclick="UIArcade.quitGame()" class="w-10 h-10 rounded-full premium-panel hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </header>
@@ -172,18 +174,18 @@ export const UIArcade = {
             <main id="game-container" class="flex-1 relative overflow-hidden flex flex-col items-center justify-center">
                 <canvas id="game-canvas" class="absolute inset-0 w-full h-full opacity-0 transition-opacity duration-500"></canvas>
                 
-                <div id="game-start-overlay" class="text-center z-10 animate-fade-in">
-                    <h2 class="text-white font-black text-2xl mb-2">Ready?</h2>
-                    <p class="text-slate-400 text-sm mb-6 max-w-[200px] mx-auto">${config.description}</p>
-                    <button onclick="UIArcade.startGameLoop()" class="px-8 py-3 rounded-full bg-${color}-500 text-white font-bold uppercase tracking-widest shadow-lg shadow-${color}-500/40 hover:scale-105 active:scale-95 transition-all">
+                <div id="game-start-overlay" class="text-center z-10 animate-fade-in p-8">
+                    <h2 class="font-black text-2xl mb-2">Ready?</h2>
+                    <p class="opacity-60 text-sm mb-6 max-w-[200px] mx-auto">${config.description}</p>
+                    <button onclick="UIArcade.startGameLoop()" class="px-8 py-3 rounded-full bg-blue-600 text-white font-bold uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all">
                         Start
                     </button>
                 </div>
             </main>
 
-            <footer class="h-24 pb-8 flex items-center justify-center relative z-20 pointer-events-none">
-                <div class="w-full max-w-xs bg-slate-800/50 rounded-full h-2 overflow-hidden backdrop-blur-sm border border-white/5">
-                    <div id="game-timer" class="h-full bg-${color}-400 shadow-[0_0_10px_currentColor]" style="width: 100%"></div>
+            <footer class="h-24 pb-8 flex items-center justify-center relative z-20 pointer-events-none px-8">
+                <div class="w-full max-w-xs premium-panel rounded-full h-2 overflow-hidden border border-white/5">
+                    <div id="game-timer" class="h-full bg-blue-400 shadow-[0_0_10px_currentColor]" style="width: 100%"></div>
                 </div>
             </footer>
         </div>
@@ -351,18 +353,18 @@ export const UIArcade = {
         };
         
         // Setup UI for Pressure Valve
-        // We inject a specific layout into the game container
+        // REFACTOR: Replaced glass-card with premium-card
         this.dom.container.innerHTML = `
-            <div class="flex flex-col items-center gap-8 w-full max-w-md">
+            <div class="flex flex-col items-center gap-8 w-full max-w-md px-6">
                 
-                <div class="w-full h-6 bg-slate-800 rounded-full border border-white/10 relative overflow-hidden">
+                <div class="w-full h-6 premium-panel rounded-full relative overflow-hidden">
                     <div id="pressure-bar" class="h-full bg-gradient-to-r from-emerald-500 via-yellow-500 to-rose-600 transition-all duration-100 ease-linear" style="width: 50%"></div>
-                    <div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white uppercase tracking-widest shadow-black drop-shadow-md">System Pressure</div>
+                    <div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest shadow-black drop-shadow-md">System Pressure</div>
                 </div>
 
-                <div id="pv-card" class="glass-card w-full p-8 flex flex-col items-center justify-center min-h-[200px] animate-slide-up">
-                    <div class="text-slate-400 text-xs font-bold uppercase mb-4">Is this correct?</div>
-                    <div id="pv-equation" class="text-5xl font-black text-white mb-2">Loading...</div>
+                <div id="pv-card" class="premium-card w-full p-8 flex flex-col items-center justify-center min-h-[200px] animate-slide-up">
+                    <div class="premium-text-head text-xs font-bold uppercase mb-4">Is this correct?</div>
+                    <div id="pv-equation" class="text-5xl font-black mb-2">Loading...</div>
                 </div>
 
                 <div class="flex gap-4 w-full">
@@ -482,16 +484,17 @@ export const UIArcade = {
         };
 
         // Render Grid Container
+        // REFACTOR: Replaced bg-slate-800 with premium-panel
         this.dom.container.innerHTML = `
             <div class="flex flex-col items-center gap-6">
-                <div class="text-sm font-bold text-slate-400 uppercase tracking-widest">
-                    Level <span id="pa-level" class="text-white text-xl ml-2">1</span>
+                <div class="text-sm font-bold opacity-60 uppercase tracking-widest">
+                    Level <span id="pa-level" class="text-xl ml-2 font-black">1</span>
                 </div>
                 
-                <div id="pa-grid" class="grid gap-3 p-4 bg-slate-800/50 rounded-2xl border border-white/5 transition-all duration-300" style="grid-template-columns: repeat(3, 1fr);">
+                <div id="pa-grid" class="grid gap-3 p-4 premium-panel rounded-2xl transition-all duration-300" style="grid-template-columns: repeat(3, 1fr);">
                     </div>
 
-                <div id="pa-status" class="h-6 text-xs font-bold text-slate-500 uppercase animate-pulse">Watch the pattern...</div>
+                <div id="pa-status" class="h-6 text-xs font-bold opacity-50 uppercase animate-pulse">Watch the pattern...</div>
             </div>
         `;
 
@@ -536,10 +539,11 @@ export const UIArcade = {
             const cell = document.createElement('div');
             // ID stored in dataset for easy checking
             cell.dataset.index = i;
+            // REFACTOR: Replaced bg-slate-700 with premium-panel
             cell.className = `
-                w-16 h-16 rounded-xl bg-slate-700 border border-white/5 
+                w-16 h-16 rounded-xl premium-panel border border-white/5 
                 transition-all duration-200 cursor-pointer 
-                active:scale-90 hover:bg-slate-600
+                active:scale-90 hover:opacity-80
             `;
             
             // Interaction
@@ -572,7 +576,7 @@ export const UIArcade = {
             
             // Flash OFF
             await new Promise(r => setTimeout(r, 600)); // Duration
-            cell.className = 'w-16 h-16 rounded-xl bg-slate-700 border border-white/5 transition-all duration-200';
+            cell.className = 'w-16 h-16 rounded-xl premium-panel border border-white/5 transition-all duration-200';
         }
 
         this.gameData.isShowingPattern = false;
@@ -587,11 +591,11 @@ export const UIArcade = {
         if (index === expected) {
             // Correct
             // Flash Green
-            cellElement.classList.remove('bg-slate-700');
+            cellElement.classList.remove('premium-panel');
             cellElement.classList.add('bg-emerald-500', 'shadow-[0_0_15px_#10b981]');
             setTimeout(() => {
                 cellElement.classList.remove('bg-emerald-500', 'shadow-[0_0_15px_#10b981]');
-                cellElement.classList.add('bg-slate-700');
+                cellElement.classList.add('premium-panel');
             }, 200);
 
             this.gameData.userIndex++;
@@ -614,3 +618,5 @@ export const UIArcade = {
 
 // Global Exposure
 window.UIArcade = UIArcade;
+
+
