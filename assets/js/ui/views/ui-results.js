@@ -29,7 +29,8 @@ export const UIResults = {
         }
 
         container.innerHTML = '';
-        container.className = 'view-container pb-24 bg-slate-900 min-h-screen';
+        // REFACTOR: Removed bg-slate-900. Increased padding to pb-40.
+        container.className = 'view-container pb-40 min-h-screen';
 
         // 2. Try Memory First (Fastest)
         let result = window.Main && window.Main.state ? window.Main.state.lastResult : null;
@@ -96,28 +97,29 @@ export const UIResults = {
 
         const mins = Math.floor((result.totalDuration || 0) / 60);
 
+        // REFACTOR: Replaced bg-slate-900/backdrop with premium header logic.
+        // Replaced card styling with premium-card.
         return `
-        <div class="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-md border-b border-white/5 px-4 py-3 flex items-center justify-between">
-            <button onclick="Main.navigate('home')" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center active:scale-95">
+        <div class="sticky top-0 z-30 px-4 py-3 flex items-center justify-between border-b border-white/5 bg-inherit backdrop-blur-md">
+            <button onclick="Main.navigate('home')" class="w-8 h-8 rounded-full premium-panel flex items-center justify-center active:scale-95 opacity-60 hover:opacity-100">
                 <i class="fa-solid fa-arrow-left"></i>
             </button>
-            <h2 class="text-xs font-black text-slate-300 uppercase tracking-widest">Performance Report</h2>
+            <h2 class="premium-text-head text-xs font-black uppercase tracking-widest">Performance Report</h2>
             <div class="w-8"></div>
         </div>
 
         <div class="p-6 pb-2">
-            <div class="premium-card p-8 rounded-[32px] text-center relative overflow-hidden border border-${color}-500/20 shadow-2xl">
-                <div class="absolute inset-0 bg-${color}-500/5 blur-3xl"></div>
+            <div class="premium-card p-8 rounded-[32px] text-center relative overflow-hidden shadow-2xl">
                 <div class="w-16 h-16 mx-auto bg-${color}-500/10 text-${color}-400 rounded-full flex items-center justify-center text-2xl mb-4 shadow-lg shadow-${color}-500/10">
                     <i class="fa-solid fa-${config.icon}"></i>
                 </div>
                 <div class="text-5xl font-black text-white tracking-tighter mb-1 shadow-black drop-shadow-md">
                     ${result.score.toFixed(1)}
                 </div>
-                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">
+                <div class="text-[10px] font-bold opacity-50 uppercase tracking-widest mb-4">
                     Target: 66 Marks
                 </div>
-                <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden mb-4">
+                <div class="h-2 w-full bg-white/10 rounded-full overflow-hidden mb-4">
                     <div id="score-bar-fill" class="h-full bg-${color}-500 w-0 transition-all duration-1000 ease-out"></div>
                 </div>
                 <div class="inline-block px-4 py-1 rounded-full bg-${color}-500/10 border border-${color}-500/20 text-${color}-400 text-xs font-black uppercase tracking-wider">
@@ -127,30 +129,31 @@ export const UIResults = {
         </div>
 
         <div class="grid grid-cols-4 gap-2 px-6 mb-2">
-             <div class="p-3 rounded-2xl bg-slate-800 border border-white/5 text-center">
+             <div class="p-3 rounded-2xl premium-panel border border-white/5 text-center">
                 <div class="text-lg font-black text-emerald-400">${result.correct}</div>
-                <div class="text-[8px] font-bold text-slate-500 uppercase">Right</div>
+                <div class="text-[8px] font-bold opacity-50 uppercase">Right</div>
             </div>
-            <div class="p-3 rounded-2xl bg-slate-800 border border-white/5 text-center">
+            <div class="p-3 rounded-2xl premium-panel border border-white/5 text-center">
                 <div class="text-lg font-black text-rose-400">${result.wrong}</div>
-                <div class="text-[8px] font-bold text-slate-500 uppercase">Wrong</div>
+                <div class="text-[8px] font-bold opacity-50 uppercase">Wrong</div>
             </div>
-             <div class="p-3 rounded-2xl bg-slate-800 border border-white/5 text-center">
-                <div class="text-lg font-black text-slate-400">${result.skipped}</div>
-                <div class="text-[8px] font-bold text-slate-500 uppercase">Skip</div>
+             <div class="p-3 rounded-2xl premium-panel border border-white/5 text-center">
+                <div class="text-lg font-black opacity-60">${result.skipped}</div>
+                <div class="text-[8px] font-bold opacity-50 uppercase">Skip</div>
             </div>
-             <div class="p-3 rounded-2xl bg-slate-800 border border-white/5 text-center">
+             <div class="p-3 rounded-2xl premium-panel border border-white/5 text-center">
                 <div class="text-lg font-black text-blue-400">${mins}m</div>
-                <div class="text-[8px] font-bold text-slate-500 uppercase">Time</div>
+                <div class="text-[8px] font-bold opacity-50 uppercase">Time</div>
             </div>
         </div>
         `;
     },
 
     _getFooterTemplate(resultId) {
+        // REFACTOR: Replaced bg-slate-900 with premium styling
         return `
-        <div class="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-xl border-t border-white/5 p-4 z-30 flex gap-3 safe-area-pb">
-            <button onclick="Main.navigate('home')" class="flex-1 py-4 rounded-xl bg-slate-800 text-slate-300 font-bold uppercase tracking-widest text-xs active:scale-95 transition-transform hover:bg-slate-700">
+        <div class="fixed bottom-0 left-0 w-full border-t border-white/5 p-4 z-30 flex gap-3 safe-area-pb bg-inherit backdrop-blur-md">
+            <button onclick="Main.navigate('home')" class="flex-1 py-4 rounded-xl premium-panel font-bold uppercase tracking-widest text-xs active:scale-95 transition-transform opacity-80 hover:opacity-100">
                 Finish
             </button>
             <button onclick="Main.navigate('review', { id: '${resultId}' })" class="flex-1 py-4 rounded-xl bg-white text-slate-900 font-bold uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-transform hover:bg-gray-100">
@@ -182,26 +185,28 @@ export const UIResults = {
 
         // 4. Mistakes Link
         if (result.wrong > 0) {
+            // REFACTOR: Replaced bg-slate-800 with premium-card
             grid.innerHTML += `
-            <div onclick="Main.navigate('review', { id: '${result.id}' })" class="p-5 rounded-[24px] bg-slate-800 border border-white/5 flex items-center justify-between cursor-pointer active:scale-95 transition-transform group">
+            <div onclick="Main.navigate('review', { id: '${result.id}' })" class="p-5 rounded-[24px] premium-card border border-white/5 flex items-center justify-between cursor-pointer active:scale-95 transition-transform group">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center text-xl"><i class="fa-solid fa-file-circle-xmark"></i></div>
                     <div>
-                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Focus Area</div>
+                        <div class="text-[10px] font-bold opacity-50 uppercase tracking-wider mb-0.5">Focus Area</div>
                         <div class="text-lg font-black text-slate-200 leading-tight">Review ${result.wrong} Errors</div>
                     </div>
                 </div>
-                <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition-colors"></i>
+                <i class="fa-solid fa-chevron-right opacity-50 group-hover:opacity-100 transition-colors"></i>
             </div>`;
         }
     },
 
     _renderPsychCard(title, value, icon, color) {
+        // REFACTOR: Replaced bg-slate-800 with premium-card
         return `
-        <div class="p-5 rounded-[24px] bg-slate-800 border border-white/5 flex items-center gap-4">
+        <div class="p-5 rounded-[24px] premium-card border border-white/5 flex items-center gap-4">
             <div class="w-12 h-12 rounded-2xl bg-${color}-500/10 text-${color}-400 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-${icon}"></i></div>
             <div>
-                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">${title}</div>
+                <div class="text-[10px] font-bold opacity-50 uppercase tracking-wider mb-0.5">${title}</div>
                 <div class="text-lg font-black text-slate-200 leading-tight">${value}</div>
             </div>
         </div>`;
@@ -218,9 +223,11 @@ export const UIResults = {
     },
 
     _renderError(container, msg) {
-        container.innerHTML = `<div class="p-10 text-center text-slate-400">${msg} <br><br> <button onclick="Main.navigate('home')" class="text-white bg-slate-700 px-4 py-2 rounded">Home</button></div>`;
+        // REFACTOR: Removed bg-slate-700
+        container.innerHTML = `<div class="p-10 text-center opacity-60">${msg} <br><br> <button onclick="Main.navigate('home')" class="text-white premium-panel px-4 py-2 rounded">Home</button></div>`;
     }
 };
 
 window.UIResults = UIResults;
+
 
