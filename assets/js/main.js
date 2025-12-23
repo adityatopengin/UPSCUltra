@@ -1,138 +1,93 @@
 /**
- * MAIN.JS (SAFE MODE)
- * Purpose: Isolate the broken file.
+ * MAIN.JS (DIAGNOSTIC MODE)
+ * Purpose: Force the app to start and report missing files.
  */
 
+// Core Services (Must load)
 import { DB } from './services/db.js';
 import { CONFIG } from './config.js';
-import { MasterAggregator } from './services/master-aggregator.js';
-import { Engine } from './engine/quiz-engine.js';
-import { UI } from './ui/ui-manager.js'; 
-
-import { UIHome } from './ui/views/ui-home.js';
-import { UIQuiz } from './ui/views/ui-quiz.js';
-import { UIResults } from './ui/views/ui-results.js';
-
-// 🔴 DISABLED THE SUSPECT FILE
-// import { UIReview } from './ui/views/ui-review.js'; 
 
 export const Main = {
     state: {
         currentView: 'home',
-        activeSubject: null,
-        isQuizActive: false,
-        lastResultId: null,
-        lastResult: null
+        isQuizActive: false
     },
 
     async init() {
-        console.log(`🚀 SAFE MODE: System Launching...`);
+        console.log("🚀 DIAGNOSTIC MODE: Starting...");
 
+        // 1. Test Database
         try {
             await DB.connect();
-            console.log("✅ DB Connected");
-
-            if (window.UI) window.UI.init();
-            console.log("✅ UI Initialized");
-
-            if (MasterAggregator) MasterAggregator.init();
-
-            // Force Router
-            this._initRouter();
-            
-            setTimeout(() => {
-                this.navigate('home');
-                const loader = document.getElementById('boot-loader');
-                if (loader) loader.style.display = 'none';
-                console.log("✅ BOOT COMPLETE");
-            }, 500);
-
+            console.log("✅ Database: Connected");
         } catch (e) {
-            console.error("CRITICAL BOOT ERROR:", e);
-            alert("Boot Failed: " + e.message);
+            console.error("❌ Database: FAILED", e);
+        }
+
+        // 2. Load UI Manager safely
+        try {
+            // Dynamic import to prevent crash if file is missing
+            const module = await import('./ui/ui-manager.js');
+            if (module.UI) {
+                window.UI = module.UI;
+                window.UI.init();
+                console.log("✅ UI Manager: Loaded");
+            }
+        } catch (e) {
+            console.error("❌ UI Manager: MISSING or BROKEN", e);
+        }
+
+        // 3. Load Views safely
+        await this._loadView('Home', './ui/views/ui-home.js');
+        await this._loadView('Quiz', './ui/views/ui-quiz.js');
+        await this._loadView('Results', './ui/views/ui-results.js');
+
+        // 4. Force Boot Complete
+        setTimeout(() => {
+            console.log("✅ BOOT SEQUENCE FINISHED");
+            const loader = document.getElementById('boot-loader');
+            if (loader) loader.style.display = 'none';
+            
+            // Render Home Manually
+            const container = document.getElementById('app-container');
+            if (container) {
+                container.innerHTML = `<div class="p-10 text-center text-white">
+                    <h1 class="text-xl font-bold">System Diagnostics</h1>
+                    <p class="text-slate-400">If you see this, the App Core is working.</p>
+                    <p class="mt-4 text-sm">Check the Console (F12) to see which file failed.</p>
+                    <button onclick="Main.navigate('home')" class="mt-6 px-6 py-2 bg-blue-600 rounded">Try Loading Home</button>
+                </div>`;
+            }
+        }, 1000);
+    },
+
+    async _loadView(name, path) {
+        try {
+            const module = await import(path);
+            const viewName = `UI${name}`;
+            if (module[viewName]) {
+                window[viewName] = module[viewName];
+                console.log(`✅ View ${name}: Loaded`);
+            }
+        } catch (e) {
+            console.error(`❌ View ${name}: FAILED to load from ${path}`, e);
         }
     },
 
-    navigate(viewName, params = null) {
-        if (this.state.isQuizActive && viewName !== 'quiz') {
-            if (!confirm("⚠️ End Quiz?")) return;
-            this.endQuizSession();
-        }
-
-        this.state.currentView = viewName;
-        if (params) {
-            if (params.id) this.state.lastResultId = params.id;
-        }
-
-        if (viewName === 'quiz') {
-            history.replaceState(null, null, `#${viewName}`);
-            this._handleRoute(); 
-        } else {
-            window.location.hash = `#${viewName}`;
-        }
-    },
-
-    _initRouter() {
-        window.addEventListener('hashchange', () => this._handleRoute());
-    },
-
-    async _handleRoute() {
-        const hash = window.location.hash.replace('#', '') || 'home';
+    navigate(viewName) {
+        console.log(`Attempting navigation to: ${viewName}`);
         const container = document.getElementById('app-container');
-        window.scrollTo(0, 0);
-
-        console.log("Navigating to:", hash);
-
-        switch (hash.split('?')[0]) {
-            case 'home':
-                if (window.UIHome) await UIHome.render(container);
-                break;
-            case 'quiz':
-                if (window.UIQuiz) UIQuiz.render(container);
-                break;
-            case 'results':
-                if (window.UIResults) await UIResults.render(container);
-                break;
-            // 🔴 DISABLED ROUTE
-            case 'review':
-                container.innerHTML = "<h2 class='p-10 text-center'>Review Module Disabled in Safe Mode</h2>";
-                // if (window.UIReview) await UIReview.render(container);
-                break;
-            default:
-                this.navigate('home');
-        }
         
-        if (window.UIHeader) UIHeader.updateActiveTab(hash);
+        if (viewName === 'home' && window.UIHome) window.UIHome.render(container);
+        else if (viewName === 'quiz' && window.UIQuiz) window.UIQuiz.render(container);
+        else if (viewName === 'results' && window.UIResults) window.UIResults.render(container);
+        else alert(`View ${viewName} is not loaded properly.`);
     },
-
-    async selectSubject(subjectId) {
-        this.state.activeSubject = subjectId;
-        await this.startQuizSession(subjectId);
-    },
-
-    async startQuizSession(subjectId) {
-        if (window.UI) UI.toggleLoader(true);
-        await Engine.startSession(subjectId); 
-        this.state.isQuizActive = true;
-        this.navigate('quiz');
-        if (window.UI) UI.toggleLoader(false);
-    },
-
-    handleQuizCompletion(resultData) {
-        this.state.lastResult = resultData;
-        this.state.lastResultId = resultData.id;
-        this.state.isQuizActive = false;
-        this.navigate('results', { id: resultData.id });
-    },
-
-    endQuizSession() {
-        if (Engine) Engine.terminateSession();
-        this.state.isQuizActive = false;
-        this.navigate('home');
-    },
-
-    toggleTheme() {
-        document.documentElement.classList.toggle('dark');
+    
+    // Stub for quiz start
+    async selectSubject(id) {
+         console.log("Selected:", id);
+         this.navigate('quiz');
     }
 };
 
