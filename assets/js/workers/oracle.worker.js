@@ -251,8 +251,9 @@ function runPatternRecognition(data, currentScore) {
     // Calculate estimated CSAT score (simple weighted sum of CSAT subjects)
     let csatScore = 0;
     let hasCsatData = false;
-    
-    ['csat_quant', 'csat_reasoning', 'csat_rc'].forEach(id => {
+
+     // NEW (Correct)
+    ['csat_quant', 'csat_logic', 'csat_rc'].forEach(id => {
         if (ac[id]) {
             // Estimate: Mastery * Weight * 200 (Total Marks) * 0.33 (Subject weight approx)
             csatScore += (ac[id].mastery / 100) * 66; 
