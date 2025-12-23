@@ -2,7 +2,7 @@
  * UI-SETTINGS (CONTROL CENTER)
  * Version: 2.6.0 (Fixed Import & Handlers)
  * Path: assets/js/ui/views/ui-settings.js
- * Responsibilities:
+ * Responsibilities
  * 1. System Preferences (Theme, Haptics, Data).
  * 2. Information Hub (Mission, Creator, Tech Specs).
  * 3. The "Personality" Modules (Roast, Audio, Plan B).
