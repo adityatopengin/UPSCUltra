@@ -1,10 +1,6 @@
 /**
  * MAIN.JS (FINAL PRODUCTION ROUTER)
- * Version: 3.3.0
- * Responsibilities:
- * 1. App Boot Sequence (DB -> UI -> Logic).
- * 2. Routing (Home, Quiz, Results, Review, Settings, Stats, Arcade).
- * 3. Global State Management.
+ * Version: 3.3.1 (Fixed Navigation Import)
  */
 
 import { DB } from './services/db.js';
@@ -13,19 +9,21 @@ import { MasterAggregator } from './services/master-aggregator.js';
 import { Engine } from './engine/quiz-engine.js';
 import { UI } from './ui/ui-manager.js'; 
 
-// ✅ CORE VIEWS (Loaded Immediately for Speed)
+// ✅ IMPORT THE HEADER (Critical Fix)
+// Note: Ensure ui-header.js is actually in this folder. 
+// If it's directly in 'ui', remove '/components'.
+import { UIHeader } from './ui/components/ui-header.js'; // 👈 ADDED
+
+// ✅ CORE VIEWS (Loaded Immediately)
 import { UIHome } from './ui/views/ui-home.js';
 import { UIQuiz } from './ui/views/ui-quiz.js';
 import { UIResults } from './ui/views/ui-results.js';
 import { UIReview } from './ui/views/ui-review.js'; 
 
-// ⏳ OPTIONAL VIEWS (Lazy Loaded to prevent Boot Crashes)
+// ⏳ OPTIONAL VIEWS
 let UISettings, UIStats, UIArcade;
 
 export const Main = {
-    // ============================================================
-    // 1. STATE
-    // ============================================================
     state: {
         currentView: 'home',
         activeSubject: null,
@@ -47,14 +45,16 @@ export const Main = {
             // 2. Initialize UI Shell
             if (window.UI) await window.UI.init();
 
-            // 3. Initialize Logic Engine
+            // 3. INITIALIZE HEADER (Critical Fix)
+            if (UIHeader) UIHeader.init(); // 👈 ADDED
+
+            // 4. Initialize Logic Engine
             if (MasterAggregator) MasterAggregator.init();
 
-            // 4. Start Router
+            // 5. Start Router
             this._initRouter();
 
-            // 5. Initial Render
-            // Short delay ensures DOM is fully painted
+            // 6. Initial Render
             setTimeout(() => {
                 const hash = window.location.hash;
                 if (!hash || hash === '#') {
@@ -63,7 +63,6 @@ export const Main = {
                     this._handleRoute(); 
                 }
                 
-                // Hide Boot Loader
                 if (window.UI) UI.toggleLoader(false);
             }, 500);
 
@@ -71,7 +70,6 @@ export const Main = {
 
         } catch (e) {
             console.error("CRITICAL: Boot Failed", e);
-            // Emergency Alert - REFACTORED to Premium Style
             const loader = document.getElementById('boot-loader');
             if(loader) loader.innerHTML = `
                 <div class="premium-panel p-8 text-center font-bold" style="color: var(--danger)">
@@ -86,7 +84,6 @@ export const Main = {
     // ============================================================
     
     navigate(viewName, params = null) {
-        // Safety: Prevent accidental exit during active quiz
         if (this.state.isQuizActive && viewName !== 'quiz') {
             if (!confirm("⚠️ End Quiz? Progress will be lost.")) return;
             this.endQuizSession();
@@ -94,13 +91,11 @@ export const Main = {
 
         this.state.currentView = viewName;
         
-        // Handle Parameters
         if (params) {
             if (params.subjectId) this.state.activeSubject = params.subjectId;
             if (params.id) this.state.lastResultId = params.id;
         }
 
-        // Update URL & Trigger Route Handler
         if (viewName === 'quiz') {
             history.replaceState(null, null, `#${viewName}`);
             this._handleRoute(); 
@@ -117,42 +112,31 @@ export const Main = {
         const hash = window.location.hash.replace('#', '') || 'home';
         const container = document.getElementById('app-container');
         
-        // Scroll to top on navigation
         window.scrollTo(0, 0);
 
-        // --- ROUTING TABLE ---
         switch (hash.split('?')[0]) {
             case 'home':
                 if (window.UIHome) await UIHome.render(container);
                 break;
-                
             case 'quiz':
                 if (window.UIQuiz) UIQuiz.render(container);
                 break;
-                
             case 'results':
                 if (window.UIResults) await UIResults.render(container);
                 break;
-            
             case 'review':
                 if (window.UIReview) await UIReview.render(container);
                 break;
-
-            // --- LAZY LOADED ROUTES ---
             case 'settings':
                 await this._loadAndRender('settings', './ui/views/ui-settings.js', container);
                 break;
-
             case 'stats':
                 await this._loadAndRender('stats', './ui/views/ui-stats.js', container);
                 break;
-
             case 'arcade':
                 await this._loadAndRender('arcade', './ui/views/ui-arcade.js', container);
                 break;
-                
             default:
-                console.warn(`Router: Unknown view ${hash}, redirecting Home.`);
                 this.navigate('home');
         }
         
@@ -160,9 +144,6 @@ export const Main = {
         if (window.UIHeader) UIHeader.updateActiveTab(hash);
     },
 
-    /**
-     * Helper to load modules on demand
-     */
     async _loadAndRender(moduleName, path, container) {
         try {
             if (moduleName === 'settings') {
@@ -194,10 +175,9 @@ export const Main = {
     },
 
     // ============================================================
-    // 4. ACTIONS & HANDLERS
+    // 4. ACTIONS
     // ============================================================
 
-    // --- QUIZ ---
     async selectSubject(subjectId) {
         this.state.activeSubject = subjectId;
         await this.startQuizSession(subjectId);
@@ -218,12 +198,9 @@ export const Main = {
     },
 
     handleQuizCompletion(resultData) {
-        console.log("Main: Quiz Completed.", resultData);
-        // Store in memory for instant access by UIResults
         this.state.lastResult = resultData;
         this.state.lastResultId = resultData.id;
         this.state.isQuizActive = false;
-        
         this.navigate('results', { id: resultData.id });
     },
 
@@ -233,7 +210,6 @@ export const Main = {
         this.navigate('home');
     },
 
-    // --- UTILS ---
     showResult(id) {
         this.navigate('results', { id: id });
     },
@@ -245,10 +221,8 @@ export const Main = {
     }
 };
 
-// Global Export
 window.Main = Main;
 
-// Boot
 document.addEventListener('DOMContentLoaded', () => {
     Main.init();
 });
