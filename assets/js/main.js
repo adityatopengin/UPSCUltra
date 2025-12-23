@@ -13,6 +13,8 @@ import { Engine } from './engine/quiz-engine.js';
 import { UIHome } from './ui/views/ui-home.js';
 import { UIQuiz } from './ui/views/ui-quiz.js';
 import { UIResults } from './ui/views/ui-results.js';
+import { UI } from './ui/ui-manager.js'; 
+
 // We use conditional loading for Stats/Arcade/Settings to be safe
 // import { UIStats } from './ui/views/ui-stats.js'; 
 
@@ -94,13 +96,17 @@ export const Main = {
             this.state.lastResultId = params.id;
         }
 
-        // Update URL Hash
+        // Update URL & TRIGGER RENDER
         if (viewName === 'quiz') {
+            // replaceState is silent, so we must manually trigger the route handler
             history.replaceState(null, null, `#${viewName}`);
+            this._handleRoute(); // <--- ✅ THE FIX: Manually call the router
         } else {
+            // This automatically triggers 'hashchange', which calls _handleRoute
             window.location.hash = `#${viewName}`;
         }
     },
+
 
     _initRouter() {
         window.addEventListener('hashchange', () => this._handleRoute());
