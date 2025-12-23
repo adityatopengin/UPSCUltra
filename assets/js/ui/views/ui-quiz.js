@@ -16,7 +16,8 @@ export const UIQuiz = {
         console.log("📝 UIQuiz: Entering Exam Hall...");
         
         container.innerHTML = '';
-        container.className = 'view-container h-screen flex flex-col bg-slate-900 overflow-hidden';
+        // REFACTOR: Removed bg-slate-900.
+        container.className = 'view-container h-screen flex flex-col overflow-hidden';
 
         if (!Engine || !Engine.state) {
             console.warn("UIQuiz: Engine state missing. Redirecting...");
@@ -59,53 +60,56 @@ export const UIQuiz = {
 
     _getTemplate(config) {
         const color = config.color || 'blue';
+        
+        // REFACTOR: Replaced bg-slate-900/50 with basic border/flex classes.
+        // Removed text-slate-200.
         return `
-        <header class="h-16 px-4 flex items-center justify-between border-b border-white/5 bg-slate-900/50 backdrop-blur-md z-20">
+        <header class="h-16 px-4 flex items-center justify-between border-b border-white/5 z-20">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-${color}-500/20 text-${color}-400 flex items-center justify-center text-sm border border-${color}-500/30">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm border border-white/10 opacity-80">
                     <i class="fa-solid fa-${config.icon}"></i>
                 </div>
                 <div>
-                    <h2 class="text-xs font-black text-slate-200 uppercase tracking-wider">${config.name}</h2>
-                    <div class="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                    <h2 class="premium-text-head text-xs font-black uppercase tracking-wider">${config.name}</h2>
+                    <div class="flex items-center gap-2 text-[10px] font-bold opacity-50">
                         <span id="q-index">Q 1 / 15</span>
-                        <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+                        <span class="w-1 h-1 rounded-full bg-white/20"></span>
                         <span class="text-${color}-400">Standard Mode</span>
                     </div>
                 </div>
             </div>
             <div class="flex flex-col items-end">
-                <div id="quiz-timer" class="text-xl font-black text-slate-200 font-mono tracking-tight leading-none">00:00</div>
-                <span class="text-[9px] font-bold text-slate-500 uppercase mt-0.5">Time Left</span>
+                <div id="quiz-timer" class="text-xl font-black font-mono tracking-tight leading-none">00:00</div>
+                <span class="text-[9px] font-bold opacity-50 uppercase mt-0.5">Time Left</span>
             </div>
         </header>
 
-        <div class="h-1 w-full bg-slate-800">
+        <div class="h-1 w-full bg-white/5">
             <div id="timer-bar" class="h-full bg-${color}-500 transition-all duration-1000 ease-linear" style="width: 100%"></div>
         </div>
 
         <main class="flex-1 overflow-y-auto overflow-x-hidden p-5 pb-32 relative">
             <div id="q-card" class="animate-slide-up">
                 <div class="mb-8">
-                    <p id="q-text" class="text-lg font-medium text-slate-200 leading-relaxed">Loading...</p>
+                    <p id="q-text" class="text-lg font-medium leading-relaxed">Loading...</p>
                 </div>
                 <div id="options-list" class="flex flex-col gap-3"></div>
             </div>
         </main>
 
-        <footer class="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-xl border-t border-white/5 p-4 z-30 flex items-center justify-between safe-area-pb">
+        <footer class="fixed bottom-0 left-0 w-full border-t border-white/5 p-4 z-30 flex items-center justify-between safe-area-pb bg-inherit backdrop-blur-md">
             <div class="flex items-center gap-2">
-                <button id="btn-prev" onclick="UIQuiz.prev()" class="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center"><i class="fa-solid fa-chevron-left"></i></button>
-                <button id="btn-bookmark" onclick="UIQuiz.bookmark()" class="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:text-yellow-400 active:scale-95 transition-all flex items-center justify-center"><i class="fa-regular fa-bookmark"></i></button>
+                <button id="btn-prev" onclick="UIQuiz.prev()" class="w-12 h-12 rounded-2xl premium-panel flex items-center justify-center active:scale-95 transition-all opacity-80 hover:opacity-100"><i class="fa-solid fa-chevron-left"></i></button>
+                <button id="btn-bookmark" onclick="UIQuiz.bookmark()" class="w-12 h-12 rounded-2xl premium-panel flex items-center justify-center active:scale-95 transition-all opacity-80 hover:text-yellow-400"><i class="fa-regular fa-bookmark"></i></button>
             </div>
-            <button onclick="UIQuiz.toggleGrid()" class="px-6 h-12 rounded-2xl bg-slate-800 text-slate-300 font-bold text-sm tracking-wide uppercase hover:bg-slate-700 active:scale-95 transition-all border border-white/5"><i class="fa-solid fa-grid-2 mr-2"></i> Review</button>
+            <button onclick="UIQuiz.toggleGrid()" class="px-6 h-12 rounded-2xl premium-panel font-bold text-sm tracking-wide uppercase active:scale-95 transition-all border border-white/5 opacity-80 hover:opacity-100"><i class="fa-solid fa-grid-2 mr-2"></i> Review</button>
             <button id="btn-next" onclick="UIQuiz.next()" class="w-12 h-12 rounded-2xl bg-${color}-600 text-white shadow-lg hover:bg-${color}-500 active:scale-95 transition-all flex items-center justify-center"><i class="fa-solid fa-chevron-right"></i></button>
         </footer>
 
-        <div id="grid-modal" class="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-sm hidden flex-col animate-fade-in">
+        <div id="grid-modal" class="fixed inset-0 z-50 premium-card rounded-none hidden flex-col animate-fade-in">
             <div class="p-6 border-b border-white/10 flex justify-between items-center">
-                <h3 class="text-lg font-black text-white uppercase tracking-wider">Question Map</h3>
-                <button onclick="UIQuiz.toggleGrid()" class="w-10 h-10 rounded-full bg-slate-800 text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+                <h3 class="text-lg font-black uppercase tracking-wider">Question Map</h3>
+                <button onclick="UIQuiz.toggleGrid()" class="w-10 h-10 rounded-full premium-panel"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-6 overflow-y-auto flex-1">
                 <div id="nav-grid" class="grid grid-cols-5 gap-3"></div>
@@ -210,11 +214,14 @@ export const UIQuiz = {
         q.options.forEach((optText, i) => {
             const isSelected = selectedOption === i;
             const btn = document.createElement('button');
-            btn.className = `w-full text-left p-4 rounded-xl relative transition-all duration-200 group ${isSelected ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-white/5'}`;
+            // REFACTOR: Replaced bg-slate-800 with premium-panel logic
+            const bgClass = isSelected ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' : 'premium-panel opacity-90 hover:opacity-100 hover:border-white/20';
+            
+            btn.className = `w-full text-left p-4 rounded-xl relative transition-all duration-200 group ${bgClass}`;
             
             btn.innerHTML = `
                 <div class="flex items-start gap-4">
-                    <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${isSelected ? 'bg-white text-blue-600' : 'bg-slate-700 text-slate-400'}">${String.fromCharCode(65 + i)}</div>
+                    <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${isSelected ? 'bg-white text-blue-600' : 'bg-white/10 opacity-50'}">${String.fromCharCode(65 + i)}</div>
                     <div class="text-sm font-medium leading-snug">${optText}</div>
                 </div>
             `;
@@ -274,7 +281,8 @@ export const UIQuiz = {
             const isCurrent = index === currentIndex;
             const isBookmarked = bookmarks.has(q.id);
             
-            let bgClass = 'bg-slate-800 text-slate-400 border-slate-700';
+            // REFACTOR: Replaced bg-slate-800 with premium-panel logic
+            let bgClass = 'premium-panel opacity-60';
             if (isCurrent) bgClass = 'bg-white text-blue-900 ring-2 ring-blue-500';
             else if (isAnswered) bgClass = 'bg-blue-600 text-white border-blue-500';
             else if (isBookmarked) bgClass = 'bg-amber-500/20 text-amber-500 border-amber-500/50';
@@ -300,7 +308,7 @@ export const UIQuiz = {
             this.dom.bookmarkBtn.className = "w-12 h-12 rounded-2xl bg-amber-500 text-white shadow-lg active:scale-95 transition-all flex items-center justify-center";
             this.dom.bookmarkBtn.innerHTML = '<i class="fa-solid fa-bookmark"></i>';
         } else {
-            this.dom.bookmarkBtn.className = "w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 hover:text-amber-400 active:scale-95 transition-all flex items-center justify-center";
+            this.dom.bookmarkBtn.className = "w-12 h-12 rounded-2xl premium-panel opacity-80 active:scale-95 transition-all flex items-center justify-center hover:text-amber-400";
             this.dom.bookmarkBtn.innerHTML = '<i class="fa-regular fa-bookmark"></i>';
         }
     },
@@ -313,4 +321,5 @@ export const UIQuiz = {
 };
 
 window.UIQuiz = UIQuiz;
+
 
