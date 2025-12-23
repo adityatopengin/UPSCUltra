@@ -63,14 +63,21 @@ export const UI = {
     _createRuntimeLoader() {
         const div = document.createElement('div');
         div.id = 'global-loader';
-        div.className = 'fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex flex-col items-center justify-center animate-fade-in';
+        // REFACTOR: Replaced bg-slate-900/80 with neutral bg-black/80
+        div.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex flex-col items-center justify-center animate-fade-in';
         div.innerHTML = `<div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>`;
         document.body.appendChild(div);
     },
 
     showToast(message, type = 'info') {
         const div = document.createElement('div');
-        const colors = { success: 'bg-emerald-600', error: 'bg-rose-600', info: 'bg-slate-800' };
+        // REFACTOR: Replaced bg-slate-800 (info) with premium-card. Kept functional colors.
+        const colors = { 
+            success: 'bg-emerald-600', 
+            error: 'bg-rose-600', 
+            info: 'premium-card border border-white/10' 
+        };
+        
         div.className = `fixed top-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-50 text-white text-xs font-bold uppercase tracking-wide animate-slide-down ${colors[type] || colors.info}`;
         div.innerText = message;
         document.body.appendChild(div);
@@ -85,4 +92,5 @@ export const UI = {
 };
 
 window.UI = UI;
- 
+
+
