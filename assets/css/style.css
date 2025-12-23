@@ -1,5 +1,5 @@
 /* * UPSC SUPERAPP - PREMIUM STYLING ENGINE
- * Version: 2.0.0 (VisionOS Inspired)
+ * Version: 2.1.0 (Fixed Scrolling & Desktop Layout)
  * Path: assets/css/style.css
  * * PART 1: CORE FOUNDATION & DESIGN TOKENS
  */
@@ -62,7 +62,7 @@
 html, body {
     height: 100%;
     width: 100%;
-    overflow: hidden; /* App-like feel, scroll happens in containers */
+    /* overflow: hidden;  <-- REMOVED: This was blocking the scroll! */
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-size: 16px;
     
@@ -421,8 +421,11 @@ button {
 /* The Canvas Container */
 #oracle-container {
     position: relative;
-    width: 300px; /* Base size */
-    height: 300px;
+    /* ✅ FIX: Changed fixed dimensions to responsive */
+    width: 100%; 
+    max-width: 300px;
+    height: auto;
+    aspect-ratio: 1 / 1; /* Maintains square shape */
     margin: 0 auto;
     
     /* Hardware Acceleration */
@@ -548,7 +551,8 @@ button {
     }
     
     #app-container {
-        max-width: 480px; /* Mobile width simulator */
+        /* ✅ FIX: Increased max-width from 480px to 1024px for Desktop */
+        max-width: 1024px; 
         margin: 0 auto;
         border-left: 1px solid rgba(255,255,255,0.1);
         border-right: 1px solid rgba(255,255,255,0.1);
@@ -557,7 +561,8 @@ button {
     }
     
     #main-nav {
-        max-width: 480px;
+        /* ✅ FIX: Matched nav width to new container width */
+        max-width: 1024px;
         left: 50%;
         transform: translateX(-50%);
     }
@@ -566,6 +571,7 @@ button {
     #toast-container {
         left: 50%;
         transform: translateX(-50%);
-        width: 480px;
+        width: 1024px;
     }
 }
+
