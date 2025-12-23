@@ -169,7 +169,7 @@ export const UISettings = {
 
     _renderStorageResult() {
         // NOW we do the heavy calculation
-        const get size = (key) => Math.round((localStorage.getItem(key) || "").length / 1024);
+        const getsize = (key) => Math.round((localStorage.getItem(key) || "").length / 1024);
         
         const historySize = size('history');
         const questionsSize = size('questions'); // This is the big one
@@ -346,6 +346,7 @@ export const UISettings = {
                     </div>
                     <i class="fa-solid fa-chevron-right text-amber-500/30 group-hover:text-amber-500 transition-colors"></i>
                 </button>
+             </div>
 
 
             <div class="pt-2">
