@@ -39,8 +39,10 @@ export const MasterAggregator = {
 
         if (window.Worker) {
             try {
-                const workerPath = new URL('../workers/oracle.worker.js', import.meta.url);
-                this.worker = new Worker(workerPath);
+                // Try standard path relative to your index.html location
+                  const workerPath = 'assets/js/workers/oracle.worker.js'; 
+
+                 this.worker = new Worker(workerPath);
                 
                 this.worker.onmessage = (e) => this._handleWorkerResponse(e);
                 
