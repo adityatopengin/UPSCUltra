@@ -171,9 +171,9 @@ export const UISettings = {
         // NOW we do the heavy calculation
         const getsize = (key) => Math.round((localStorage.getItem(key) || "").length / 1024);
         
-        const historySize = size('history');
-        const questionsSize = size('questions'); // This is the big one
-        const academicSize = size('academic_state');
+        const historySize = getsize('history');
+        const questionsSize = getsize('questions'); // This is the big one
+        const academicSize = getsize('academic_state');
         const totalSize = Math.round(JSON.stringify(localStorage).length / 1024);
 
         const container = document.getElementById('sarkari-container');
