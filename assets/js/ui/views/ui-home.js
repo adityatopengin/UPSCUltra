@@ -1,6 +1,6 @@
 /**
  * UI-HOME (THE DASHBOARD)
- * Version: 2.1.0 (Fixed Syntax Error)
+ * Version: 2.1.0 (Fixed  Syntax Error)
  * Path: assets/js/ui/views/ui-home.js
  */
 
