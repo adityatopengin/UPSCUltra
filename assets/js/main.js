@@ -1,18 +1,16 @@
 /**
- * MAIN.JS (DEBUG MODE - PHASE 1: LOGIC LAYER)
- * DB + Config + Logic Engines are active.
- * UI is still disabled.
+ * MAIN.JS (DEBUG MODE - PHASE 2: HOME UI)
+ * Logic + Home Dashboard are active.
+ * Quiz View is still disabled.
  */
 
 import { DB } from './services/db.js';
 import { CONFIG } from './config.js';
-
-// ✅ UNCOMMENTING "THE BRAIN"
 import { MasterAggregator } from './services/master-aggregator.js';
 import { Engine } from './engine/quiz-engine.js';
 
-// 🔴 UI STILL DISABLED
-// import { DataSeeder } from './services/data-seeder.js'; 
+// ✅ UNCOMMENTING THE HOME VIEW
+import { UIHome } from './ui/views/ui-home.js';
 
 export const Main = {
     state: {
@@ -21,44 +19,68 @@ export const Main = {
     },
 
     async init() {
-        console.log(`🚀 PHASE 1: Testing Logic Layer...`);
+        console.log(`🚀 PHASE 2: Testing Dashboard UI...`);
 
         try {
-            // 1. Initialize Database
             await DB.connect();
-            console.log("✅ Database Connected");
+            
+            if (MasterAggregator) MasterAggregator.init();
+            
+            // Initialize UI Shell
+            if (window.UI) window.UI.init();
 
-            // 2. Initialize Master Aggregator (The Manager)
-            if (MasterAggregator) {
-                MasterAggregator.init();
-                console.log("✅ MasterAggregator Started");
+            // Load Preferences
+            this._loadPreferences();
+
+            // Start Router
+            this._initRouter();
+
+            // Force Render Home
+            const container = document.getElementById('app-container');
+            if (window.UIHome) {
+                await UIHome.render(container);
+                console.log("✅ PHASE 2 SUCCESS: Home Dashboard Rendered.");
             }
 
-            // 3. Initialize Engine (The Logic)
-            if (Engine) {
-                console.log("✅ Quiz Engine Loaded");
-            }
-
-            // 4. Initialize UI Shell (If available global)
-            if (window.UI) {
-                window.UI.init();
-            }
-
-            // Remove Loader manually
+            // Remove Loader
             const loader = document.getElementById('boot-loader');
             if (loader) loader.style.display = 'none';
 
-            console.log("✅ PHASE 1 SUCCESS: Logic Layer is clean.");
-
         } catch (e) {
-            console.error("CRITICAL: Logic Layer Failed", e);
+            console.error("CRITICAL: Dashboard Failed", e);
         }
     },
 
-    // Empty Router
-    navigate(viewName) { console.log("Nav disabled"); },
-    _initRouter() { console.log("Router disabled"); },
-    async _handleRoute() { console.log("Route handler disabled"); }
+    navigate(viewName) {
+        // Only allow Home for now
+        if (viewName === 'home') {
+            this._handleRoute();
+        } else {
+            console.log(`⚠️ Navigation to '${viewName}' blocked in Phase 2.`);
+            alert("Quiz View is disabled in Phase 2. We are testing the Dashboard only.");
+        }
+    },
+
+    _initRouter() {
+        window.addEventListener('hashchange', () => this._handleRoute());
+    },
+
+    async _handleRoute() {
+        // Hardcoded to only render Home for safety
+        const container = document.getElementById('app-container');
+        if (window.UIHome) await UIHome.render(container);
+    },
+
+    // Stub for selectSubject so tiles don't crash on click
+    selectSubject(id) {
+        console.log(`Main: User clicked ${id}, but Quiz is disabled.`);
+        alert(`You clicked ${id}! \n\nLogic is working, but Quiz View is off.`);
+    },
+
+    async _loadPreferences() {
+        const theme = localStorage.getItem('theme') || 'dark';
+        if (theme === 'dark') document.documentElement.classList.add('dark');
+    }
 };
 
 window.Main = Main;
