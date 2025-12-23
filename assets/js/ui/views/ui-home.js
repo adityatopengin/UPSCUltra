@@ -1,6 +1,6 @@
 /**
  * UI-HOME (THE DASHBOARD)
- * Version: 2.0.0
+ * Version: 2.0.1 (Fixes Circular Dependency)
  * Path: assets/js/ui/views/ui-home.js
  * Responsibilities:
  * 1. The Landing Page (View).
@@ -9,12 +9,12 @@
  * 4. Lists Subject Tiles for navigation.
  */
 
-import { UI } from '../ui-manager.js'; 
 import { MasterAggregator } from '../../services/master-aggregator.js';
 import { DB } from '../../services/db.js';
+import { CONFIG } from '../../config.js';
 
-// We assume UI_Oracle is globally available or imported if converted to module
-// import { UI_Oracle } from '../components/ui-oracle.js'; 
+// NOTE: We do NOT import UI here to avoid a circular dependency cycle.
+// We access global UI utilities via window.UI instead.
 
 export const UIHome = {
     // ============================================================
@@ -26,9 +26,12 @@ export const UIHome = {
         container.innerHTML = '';
         container.className = 'view-container pb-24'; // Padding for bottom dock
 
-        // B. Render Header (Standard UI Component)
-        // We use the shared UI.renderHeader method (assumed to be in UIHeader)
-        if (UI.header) UI.header.render(container);
+        // B. Update Header State
+        // We use the global UI object to manage the dock state
+        if (window.UI && window.UIHeader) {
+            window.UIHeader.toggle(true); // Ensure dock is visible
+            window.UIHeader.updateActiveTab('home');
+        }
 
         // C. Render The Oracle HUD (The "Hero" Section)
         // This is the container where the Hologram will live.
@@ -42,11 +45,9 @@ export const UIHome = {
         this._initOracle(oracleSection);
 
         // E. Render "Continue Learning" (The Resume Card)
-        // (This will be in Part 2)
         await this._renderResumeCard(container);
 
         // F. Render Subject Grid
-        // (This will be in Part 2)
         await this._renderSubjectGrid(container);
     },
 
@@ -94,33 +95,42 @@ export const UIHome = {
             </div>
 
             <div id="warning-container" class="relative z-10 mt-4 flex gap-2 overflow-x-auto no-scrollbar">
-                </div>
+            </div>
         `;
     },
+    // ============================================================
+    // 2. ORACLE INTEGRATION (LOGIC)
+    // ============================================================
 
     async _initOracle(containerElement) {
         // 1. Initialize the Visual Module
-        // We pass the global object if available, or just init
-        if (window.UI_Oracle) {
-            UI_Oracle.init(); // Caches the DOM elements we just created
+        // We check for the global window.UIOracle object
+        if (window.UIOracle) {
+            window.UIOracle.init(); 
         }
 
         try {
             // 2. Fetch Data from the Manager
             // This triggers the Worker thread
-            const prediction = await MasterAggregator.getPrediction();
+            if (MasterAggregator) {
+                const prediction = await MasterAggregator.getPrediction();
 
-            // 3. Update the UI
-            if (window.UI_Oracle && prediction) {
-                UI_Oracle.render(prediction);
+                // 3. Update the UI
+                if (window.UIOracle && prediction) {
+                    window.UIOracle.render(prediction);
+                }
             }
         } catch (e) {
             console.error("UIHome: Oracle failed to load.", e);
-            document.getElementById('prob-text').innerText = "SYSTEM OFFLINE";
-            document.getElementById('prob-text').classList.remove('animate-pulse');
-            document.getElementById('prob-text').classList.add('text-rose-500');
+            const probText = document.getElementById('prob-text');
+            if (probText) {
+                probText.innerText = "SYSTEM OFFLINE";
+                probText.classList.remove('animate-pulse');
+                probText.classList.add('text-rose-500');
+            }
         }
     },
+
     // ============================================================
     // 3. RESUME CARD (CONTINUE LEARNING)
     // ============================================================
@@ -128,9 +138,7 @@ export const UIHome = {
     async _renderResumeCard(container) {
         try {
             // 1. Fetch History from IndexedDB
-            // We get all keys and sort, or if DB supports it, get the last one.
-            // For MVP, we get all (assuming history isn't massive yet) and pick the last.
-            // A more optimized 'getLast' method can be added to DB.js later.
+            // We get all keys and sort. For MVP, getting all is acceptable.
             const allHistory = await DB.getAll('history');
             
             if (!allHistory || allHistory.length === 0) return; // New user, nothing to resume
@@ -141,17 +149,23 @@ export const UIHome = {
             if (!lastResult) return;
 
             // 2. Format Data
-            // We use the config to find the nice name (e.g., 'polity' -> 'Indian Polity')
-            // Assuming CONFIG is global (from assets/js/config.js)
+            // We use the CONFIG to find the nice name (e.g., 'polity' -> 'Indian Polity')
             const subjectId = lastResult.subject || 'unknown';
-            const subjectConfig = CONFIG.subjectsGS1.find(s => s.id === subjectId) || 
-                                  CONFIG.subjectsCSAT.find(s => s.id === subjectId) || 
-                                  { name: subjectId.toUpperCase(), color: 'slate', icon: 'book' };
+            
+            // Search in both GS1 and CSAT lists
+            let subjectConfig = CONFIG.subjectsGS1.find(s => s.id === subjectId) || 
+                                CONFIG.subjectsCSAT.find(s => s.id === subjectId);
+                                
+            // Fallback if config not found
+            if (!subjectConfig) {
+                subjectConfig = { name: subjectId.toUpperCase(), color: 'slate', icon: 'book' };
+            }
 
             // 3. Render Card
             const card = document.createElement('div');
+            // We use standard HTML click handler that calls global Main
             card.innerHTML = `
-            <div onclick="Main.showResult('${lastResult.id}')" 
+            <div onclick="if(window.Main) Main.showResult('${lastResult.id}')" 
                  class="premium-card p-5 rounded-[28px] mb-8 flex items-center justify-between cursor-pointer active:scale-95 transition-transform animate-slide-up select-none ring-1 ring-white/10 hover:ring-white/20">
                 
                 <div class="flex items-center gap-4">
@@ -178,7 +192,6 @@ export const UIHome = {
             console.warn("UIHome: Failed to render resume card", e);
         }
     },
-
     // ============================================================
     // 4. SUBJECT GRID (NAVIGATION)
     // ============================================================
@@ -195,11 +208,13 @@ export const UIHome = {
         grid.className = "grid grid-cols-2 gap-3 mb-8";
         
         // 1. Generate Tiles for GS Subjects
-        // We use the UIUtils helper if available, otherwise manual fallback
-        CONFIG.subjectsGS1.forEach((sub, index) => {
-            const tile = this._createSubjectTile(sub, index);
-            grid.appendChild(tile);
-        });
+        // CONFIG is imported at the top of the file
+        if (CONFIG.subjectsGS1) {
+            CONFIG.subjectsGS1.forEach((sub, index) => {
+                const tile = this._createSubjectTile(sub, index);
+                grid.appendChild(tile);
+            });
+        }
         container.appendChild(grid);
 
         // Section Title CSAT
@@ -211,10 +226,13 @@ export const UIHome = {
         // CSAT Grid
         const gridCsat = document.createElement('div');
         gridCsat.className = "grid grid-cols-2 gap-3 mb-24"; // Extra margin for bottom dock
-        CONFIG.subjectsCSAT.forEach((sub, index) => {
-            const tile = this._createSubjectTile(sub, index + 5); // Offset index for animation delay
-            gridCsat.appendChild(tile);
-        });
+        
+        if (CONFIG.subjectsCSAT) {
+            CONFIG.subjectsCSAT.forEach((sub, index) => {
+                const tile = this._createSubjectTile(sub, index + 5); // Offset index for animation delay
+                gridCsat.appendChild(tile);
+            });
+        }
         container.appendChild(gridCsat);
     },
 
@@ -231,10 +249,12 @@ export const UIHome = {
         div.style.animationDelay = `${delay}ms`;
         
         div.onclick = () => {
-            // Trigger the Quiz Setup Modal
-            // We assume Main.startQuiz or a modal opener exists
-            // For robustness, we route via Main
-            if (window.Main) Main.selectSubject(sub.id); 
+            // Trigger the Quiz Setup via Main Controller
+            if (window.Main && window.Main.selectSubject) {
+                window.Main.selectSubject(sub.id); 
+            } else {
+                console.warn("Main controller not found");
+            }
         };
 
         div.innerHTML = `
@@ -254,5 +274,6 @@ export const UIHome = {
     }
 };
 
-// Auto-register to global scope
+// Auto-register to global scope so UI-Manager can find it
 window.UIHome = UIHome;
+
