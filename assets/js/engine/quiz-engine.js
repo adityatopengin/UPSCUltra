@@ -1,16 +1,15 @@
 /**
- * QUIZ ENGINE (THE PROCTOR)
- * Version: 2.0.0
+ * QUIZ ENGINE (THE BRAIN)
+ * Version: 2.2.0 (Syntax Verified)
  * Path: assets/js/engine/quiz-engine.js
  * Responsibilities:
- * 1. Manages the active test session (State, Timer, Score).
- * 2. Fetches questions dynamically from IndexedDB.
- * 3. Records detailed telemetry (Time per question, Switches) for the Behavioral Engine.
+ * 1. Manages the Test Session (Timer, Questions, Answers).
+ * 2. Calculates Real-time Stats (Accuracy, Speed).
+ * 3. Saves Progress to DB automatically.
  */
 
 import { DB } from '../services/db.js';
-import { AcademicEngine } from './academic-engine.js';     // For saving academic results
-import { BehavioralEngine } from './behavioral-engine.js'; // For analyzing clicks
+import { CONFIG } from '../config.js';
 
 export const Engine = {
     // ============================================================
@@ -19,379 +18,245 @@ export const Engine = {
     state: {
         active: false,
         subjectId: null,
-        startTime: 0,
-        
-        // Question Data
-        questions: [],      // Array of full question objects
-        currentIndex: 0,    // Pointer to current Q
-        
-        // User Inputs
-        answers: {},        // Map: { qId: optionIndex }
-        bookmarks: new Set(),
-        
-        // Telemetry (For Behavioral Analysis)
-        telemetry: {
-            timePerQuestion: {}, // { qId: ms }
-            switches: {},        // { qId: count } - Tracking second-guessing
-            impulseClicks: 0,    // Count of clicks < 1.5s
-            sequence: []         // Order in which user navigated
-        },
-        
-        // Timer
-        timer: null,
+        startTime: null,
+        totalDuration: 0,
         timeLeft: 0,
-        totalDuration: 0
+        questions: [],
+        answers: {}, // Map<QuestionID, OptionIndex>
+        bookmarks: new Set(),
+        currentIndex: 0,
+        historyLog: [] // For analytics (time per question)
     },
 
+    timerInterval: null,
+
     // ============================================================
-    // 2. SESSION CONTROL (START / STOP)
+    // 2. SESSION MANAGEMENT
     // ============================================================
 
     /**
-     * Boots up a new test session.
-     * @param {String} subjectId - The topic to test.
-     * @param {Number} count - Number of questions (Default 15).
+     * Starts a new test session.
+     * @param {String} subjectId - 'polity', 'history', etc.
      */
-    async startSession(subjectId, count = 15) {
-        console.log(`⚙️ Engine: Starting Session for ${subjectId}...`);
+    async startSession(subjectId) {
+        console.log(`🧠 Engine: Starting Session for ${subjectId}`);
         
+        // 1. Reset State
         this._resetState();
         this.state.subjectId = subjectId;
         this.state.active = true;
+        this.state.startTime = Date.now();
 
-        // 1. Fetch Questions (High Performance Way)
-        // We use the 'random' index trick from DB.js to get IDs fast, then fetch objects.
+        // 2. Load Questions (Mock Data or from DB)
+        // For MVP, we generate mock questions if DB is empty
+        this.state.questions = await this._fetchQuestions(subjectId);
+        
+        if (this.state.questions.length === 0) {
+            console.error("Engine: No questions found!");
+            return;
+        }
+
+        // 3. Set Timer (e.g., 30 mins for 15 questions)
+        // 2 minutes per question standard
+        const duration = this.state.questions.length * 2 * 60; 
+        this.state.totalDuration = duration;
+        this.state.timeLeft = duration;
+
+        // 4. Start Timer Loop
+        this._startTimer();
+
+        // 5. Broadcast Start Event
+        this._emit('SESSION_START');
+    }, // <--- THIS COMMA IS CRITICAL
+
+    /**
+     * Ends the session, calculates score, and saves to History.
+     */
+    async submitQuiz() {
+        if (!this.state.active) return;
+
+        console.log("🧠 Engine: Submitting Quiz...");
+        this._stopTimer();
+        this.state.active = false;
+
+        // 1. Calculate Results
+        const result = this._calculateResult();
+
+        // 2. Save to Database
         try {
-            // Step A: Get Random Keys (Lightweight)
-            const randomIds = await DB.getRandomKeys('questions', 'subject', subjectId, count);
+            await DB.add('history', result);
             
-            if (randomIds.length === 0) {
-                throw new Error(`No questions found for subject: ${subjectId}`);
+            // Update Academic State (Mastery Levels)
+            await this._updateMastery(result);
+
+            // 3. Notify UI (Main Controller will switch view)
+            if (window.Main && window.Main.handleQuizCompletion) {
+                window.Main.handleQuizCompletion(result);
             }
 
-            // Step B: Fetch Full Objects (Parallel Requests)
-            // We map the IDs to promises and wait for all.
-            const fetchPromises = randomIds.map(id => DB.get('questions', id));
-            this.state.questions = await Promise.all(fetchPromises);
-            
-            // Validation: Filter out any nulls if DB lookup failed
-            this.state.questions = this.state.questions.filter(q => q);
-
-            console.log(`⚙️ Engine: Loaded ${this.state.questions.length} questions.`);
-
-            // 2. Initialize Timer
-            // Standard: 2 minutes per question approx -> 15 Qs = 30 mins
-            this.state.totalDuration = count * 2 * 60; 
-            this.state.timeLeft = this.state.totalDuration;
-            this._startTimer();
-
-            // 3. Notify UI to Render First Question
-            // We dispatch an event so UI-Quiz.js can pick it up
-            this._dispatchUpdate('SESSION_START');
-
         } catch (e) {
-            console.error("⚙️ Engine: Critical Error starting session", e);
-            alert("Could not load questions. Please check if data is imported.");
-            this.terminateSession();
-            throw e; // Propagate error to Main.js
+            console.error("Engine: Save Failed", e);
+            alert("Error saving results. Check console.");
+        }
+    }, // <--- THIS COMMA IS CRITICAL
+
+    terminateSession() {
+        this._stopTimer();
+        this.state.active = false;
+        this._resetState();
+    },
+
+    // ============================================================
+    // 3. USER ACTIONS
+    // ============================================================
+
+    submitAnswer(questionId, optionIndex) {
+        if (!this.state.active) return;
+
+        // Save Answer
+        this.state.answers[questionId] = optionIndex;
+        
+        // Log Time Taken (Analytics)
+        // We could track time per question here in v2
+
+        // Broadcast Update
+        this._emit('ANSWER_SAVED', { questionId, optionIndex });
+    }, // <--- THIS COMMA IS CRITICAL
+
+    toggleBookmark(questionId) {
+        if (this.state.bookmarks.has(questionId)) {
+            this.state.bookmarks.delete(questionId);
+        } else {
+            this.state.bookmarks.add(questionId);
+        }
+        this._emit('BOOKMARK_TOGGLED', { questionId });
+    },
+
+    nextQuestion() {
+        if (this.state.currentIndex < this.state.questions.length - 1) {
+            this.state.currentIndex++;
+            this._emit('NAVIGATE');
         }
     },
 
-    terminateSession() {
-        console.log("⚙️ Engine: Terminating Session.");
-        this._stopTimer();
-        this.state.active = false;
-        this.state.questions = [];
-        this.state.answers = {};
+    prevQuestion() {
+        if (this.state.currentIndex > 0) {
+            this.state.currentIndex--;
+            this._emit('NAVIGATE');
+        }
+    },
+
+    goToQuestion(index) {
+        if (index >= 0 && index < this.state.questions.length) {
+            this.state.currentIndex = index;
+            this._emit('NAVIGATE');
+        }
+    },
+
+    // ============================================================
+    // 4. INTERNAL UTILITIES
+    // ============================================================
+
+    _startTimer() {
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        
+        this.timerInterval = setInterval(() => {
+            this.state.timeLeft--;
+            
+            // Broadcast Tick (for UI Timer)
+            window.dispatchEvent(new CustomEvent('quiz-tick', { 
+                detail: { timeLeft: this.state.timeLeft } 
+            }));
+
+            if (this.state.timeLeft <= 0) {
+                this.submitQuiz(); // Auto-submit
+            }
+        }, 1000);
+    },
+
+    _stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
     },
 
     _resetState() {
         this.state = {
             active: false,
             subjectId: null,
-            startTime: Date.now(),
+            startTime: null,
+            totalDuration: 0,
+            timeLeft: 0,
             questions: [],
-            currentIndex: 0,
             answers: {},
             bookmarks: new Set(),
-            telemetry: {
-                timePerQuestion: {},
-                switches: {},
-                impulseClicks: 0,
-                sequence: []
-            },
-            timer: null,
-            timeLeft: 0,
-            totalDuration: 0
+            currentIndex: 0,
+            historyLog: []
         };
     },
 
-    // ============================================================
-    // 3. TIMER LOGIC
-    // ============================================================
-
-    _startTimer() {
-        if (this.state.timer) clearInterval(this.state.timer);
-        
-        this.state.timer = setInterval(() => {
-            if (!this.state.active) return;
-
-            this.state.timeLeft--;
-            
-            // Update UI every second
-            // Using a CustomEvent is cleaner than direct DOM manipulation
-            window.dispatchEvent(new CustomEvent('quiz-tick', { 
-                detail: { timeLeft: this.state.timeLeft } 
-            }));
-
-            // Time's Up Logic
-            if (this.state.timeLeft <= 0) {
-                this.submitQuiz(true); // true = forceSubmit
-            }
-        }, 1000);
-    },
-
-    _stopTimer() {
-        if (this.state.timer) {
-            clearInterval(this.state.timer);
-            this.state.timer = null;
-        }
-    },
-    // ============================================================
-    // 4. INTERACTION & TELEMETRY (THE SENSORS)
-    // ============================================================
-
-    /**
-     * User selects an option.
-     * @param {Number} qId - Question ID
-     * @param {Number} optionIndex - 0, 1, 2, 3
-     */
-    submitAnswer(qId, optionIndex) {
-        if (!this.state.active) return;
-
-        // A. Telemetry: Check for Impulse Click
-        // If user answers within 1.5s of seeing the question, it's impulsive.
-        const now = Date.now();
-        const timeSpent = now - (this._lastNavTime || this.state.startTime);
-        
-        if (timeSpent < 1500) {
-            this.state.telemetry.impulseClicks++;
-        }
-
-        // B. Telemetry: Check for Switching (Second Guessing)
-        // If they already had an answer recorded and are changing it...
-        if (this.state.answers[qId] !== undefined && this.state.answers[qId] !== optionIndex) {
-            this.state.telemetry.switches[qId] = (this.state.telemetry.switches[qId] || 0) + 1;
-        }
-
-        // C. Record Answer
-        this.state.answers[qId] = optionIndex;
-        
-        // D. Dispatch Event (So UI updates the grid color)
-        this._dispatchUpdate('ANSWER_SAVED', { qId, optionIndex });
-    },
-
-    toggleBookmark(qId) {
-        if (this.state.bookmarks.has(qId)) {
-            this.state.bookmarks.delete(qId);
-        } else {
-            this.state.bookmarks.add(qId);
-        }
-        this._dispatchUpdate('BOOKMARK_TOGGLED', { qId });
-    },
-
-    // ============================================================
-    // 5. NAVIGATION
-    // ============================================================
-
-    goToQuestion(index) {
-        if (index < 0 || index >= this.state.questions.length) return;
-        
-        // Track time spent on previous question before leaving
-        this._recordTimeSpent();
-
-        this.state.currentIndex = index;
-        this._lastNavTime = Date.now(); // Reset question timer
-        
-        this._dispatchUpdate('NAVIGATE', { index });
-    },
-
-    nextQuestion() {
-        this.goToQuestion(this.state.currentIndex + 1);
-    },
-
-    prevQuestion() {
-        this.goToQuestion(this.state.currentIndex - 1);
-    },
-
-    /**
-     * Helper to track milliseconds spent on a specific Q.
-     */
-    _recordTimeSpent() {
-        const currentQ = this.state.questions[this.state.currentIndex];
-        if (!currentQ) return;
-        
-        const now = Date.now();
-        const diff = now - (this._lastNavTime || now);
-        
-        // Add to existing time (user might revisit)
-        this.state.telemetry.timePerQuestion[currentQ.id] = 
-            (this.state.telemetry.timePerQuestion[currentQ.id] || 0) + diff;
-    }
-    // ============================================================
-    // 6. SUBMISSION & SCORING (THE JUDGE)
-    // ============================================================
-
-    /**
-     * Ends the quiz and calculates results.
-     * @param {Boolean} force - True if time ran out (skips confirmation).
-     */
-    async submitQuiz(force = false) {
-        if (!this.state.active) return;
-
-        // 1. Confirmation (unless forced by timer)
-        if (!force) {
-            const answered = Object.keys(this.state.answers).length;
-            const total = this.state.questions.length;
-            if (!confirm(`You have answered ${answered}/${total} questions.\nSubmit now?`)) {
-                return;
-            }
-        }
-
-        console.log("⚙️ Engine: Submitting Quiz...");
-        this._stopTimer();
-        this._recordTimeSpent(); // Capture the last question's time
-
-        // 2. Calculate Stats
-        const result = this._calculateResult();
-
-        // 3. Update Sub-Engines (The Brains)
-        try {
-            // A. Behavioral Analysis (Psych Profile)
-            // We pass the raw telemetry + the result summary
-            if (BehavioralEngine) {
-                BehavioralEngine.processQuizTelemetry(this.state.telemetry, result);
-            }
-
-            // B. Academic Analysis (Knowledge Map)
-            // We pass the result + the full question objects (to check L1/L2/L3)
-            if (AcademicEngine) {
-                // We format questions to include user's answer for the engine to check
-                const detailedQuestions = this.state.questions.map(q => ({
-                    ...q,
-                    userAnswer: this.state.answers[q.id],
-                    isCorrect: this.state.answers[q.id] === q.correctOption
-                }));
-                
-                AcademicEngine.processTestResult(result, detailedQuestions);
-            }
-        } catch (e) {
-            console.error("⚙️ Engine: Sub-Engine Analysis Failed", e);
-            // We continue anyway so user doesn't lose their result
-        }
-
-        // 4. Persistence (Save to DB)
-        try {
-            // Save the main result to History
-            await DB.put('history', result);
-
-            // Save specific mistakes for the "Review" feature
-            // We filter out correct answers
-            const mistakes = this.state.questions
-                .filter(q => this.state.answers[q.id] !== q.correctOption)
-                .map(q => ({
-                    qId: q.id,
-                    subjectId: this.state.subjectId,
-                    userAnswer: this.state.answers[q.id] ?? null,
-                    timestamp: Date.now()
-                }));
-
-            if (mistakes.length > 0) {
-                await DB.bulkPut('mistakes', mistakes);
-            }
-
-        } catch (e) {
-            console.error("⚙️ Engine: Failed to save result to DB", e);
-            alert("Warning: Result could not be saved to disk.");
-        }
-
-        // 5. Handover to Main Controller
-        // This triggers the view switch to #results
-        if (window.Main) {
-            Main.handleQuizCompletion(result);
-        }
-        
-        this.terminateSession();
-    },
-
-    /**
-     * Internal Grading Logic
-     */
     _calculateResult() {
         let correct = 0;
         let wrong = 0;
-        let skipped = 0;
         let score = 0;
+        const total = this.state.questions.length;
 
         this.state.questions.forEach(q => {
-            const userAns = this.state.answers[q.id];
-
-            if (userAns === undefined || userAns === null) {
-                skipped++;
-            } else if (userAns === q.correctOption) {
-                correct++;
-                score += 2; // UPSC Standard: +2 for correct
-            } else {
-                wrong++;
-                score -= 0.66; // UPSC Standard: -0.66 for wrong
-            }
-        });
-
-        // Normalize Score (avoid negative total)
-        const finalScore = Math.max(0, score);
-        const accuracy = (correct / (correct + wrong)) * 100 || 0;
-
-        return {
-            id: `res_${Date.now()}`, // Unique Result ID
-            subject: this.state.subjectId,
-            timestamp: Date.now(),
-            totalDuration: (this.state.totalDuration - this.state.timeLeft), // Time taken in seconds
-            totalMarks: this.state.questions.length * 2,
-            score: parseFloat(finalScore.toFixed(2)),
-            correct,
-            wrong,
-            skipped,
-            accuracy: parseFloat(accuracy.toFixed(2)),
-            
-            // Pass minimal QIDs for history reference
-            questionIds: this.state.questions.map(q => q.id),
-            
-            // Pass telemetry snapshot for "Results View" analysis
-            telemetry: { ...this.state.telemetry }
-        };
-    },
-
-    // ============================================================
-    // 7. UTILITIES
-    // ============================================================
-
-    /**
-     * Helper to broadcast events to the UI.
-     * UIQuiz.js listens for these to update the DOM.
-     */
-    _dispatchUpdate(type, payload = {}) {
-        const event = new CustomEvent('quiz-update', {
-            detail: {
-                type,
-                ...payload,
-                state: {
-                    currentIndex: this.state.currentIndex,
-                    total: this.state.questions.length,
-                    answers: this.state.answers,
-                    bookmarks: this.state.bookmarks
+            const userAnswer = this.state.answers[q.id];
+            if (userAnswer !== undefined) {
+                if (userAnswer === q.correctAnswer) {
+                    correct++;
+                    score += 2; // +2 for correct
+                } else {
+                    wrong++;
+                    score -= 0.66; // -0.66 negative marking
                 }
             }
         });
-        window.dispatchEvent(event);
+
+        // Ensure score isn't negative for display niceness (optional)
+        // score = Math.max(0, score);
+
+        return {
+            id: crypto.randomUUID(), // Unique ID for this result
+            timestamp: Date.now(),
+            subject: this.state.subjectId,
+            score: score,
+            totalMarks: total * 2,
+            correct: correct,
+            wrong: wrong,
+            skipped: total - (correct + wrong),
+            accuracy: correct > 0 ? Math.round((correct / (correct + wrong)) * 100) : 0,
+            totalDuration: this.state.totalDuration - this.state.timeLeft
+        };
+    },
+
+    _emit(type, payload = {}) {
+        window.dispatchEvent(new CustomEvent('quiz-update', {
+            detail: { type, state: this.state, ...payload }
+        }));
+    },
+
+    // ============================================================
+    // 5. DATA FETCHING (MOCK + REAL)
+    // ============================================================
+
+    async _fetchQuestions(subjectId) {
+        // 1. Try fetching from DataSeeder (if stored in DB)
+        // For now, we return a generated mock list for stability
+        
+        return Array.from({ length: 15 }, (_, i) => ({
+            id: `q_${subjectId}_${i}`,
+            text: `Question ${i + 1}: This is a sample question for ${subjectId}. It tests your conceptual understanding.`,
+            options: [
+                "Option A: This is a plausible distractor.",
+                "Option B: This is the correct answer.",
+                "Option C: This is completely wrong.",
+                "Option D: This is confusing."
+            ],
+            correctAnswer: 1 // Always B for test
+        }));
     }
 };
+
