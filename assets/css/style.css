@@ -1,11 +1,16 @@
-/* * UPSC SUPERAPP - PREMIUM STYLE ENGINE (FINAL)
- * Theme: "Ceramic & Nebula" (Style 2 Architecture)
+/*
+ * UPSC SUPERAPP - PREMIUM STYLE ENGINE (FINAL)
+ * Theme: "Ceramic & Nebula" (Semantic Architecture)
+ * Version: 3.0.0
  * Performance: High (60fps Optimized)
- * * PART 1: CORE TOKENS & TYPOGRAPHY
  */
 
 /* Import Premium Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Space+Grotesk:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* =========================================
    1. VARIABLES & TOKENS
@@ -15,6 +20,7 @@
     --bg-app: #f0f4f8;        /* Soft Cloud White - The Canvas */
     --text-primary: #0f172a;  /* Deep Navy - High Contrast */
     --text-secondary: #64748b;/* Slate Gray - Subtitles */
+    --border-subtle: rgba(0, 0, 0, 0.05);
     
     /* Brand Gradients (The "Soul" of the app) */
     --grad-gold: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
@@ -44,6 +50,7 @@
     --bg-app: #020617;        /* Midnight Navy - OLED Friendly */
     --text-primary: #f1f5f9;  /* Soft White */
     --text-secondary: #94a3b8;
+    --border-subtle: rgba(255, 255, 255, 0.05);
     
     /* Adjust gradients for dark mode (more neon/glow) */
     --grad-gold: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
@@ -62,7 +69,9 @@
 html, body {
     height: 100%;
     width: 100%;
-    overflow: hidden; /* App-like structure */
+    /* Unlock scrolling */
+    overflow-y: auto; 
+    overflow-x: hidden;
     
     /* Typography Engine */
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -93,6 +102,7 @@ body::before, body::after {
     z-index: -1;
     opacity: 0.6;
     animation: blob-drift 20s infinite alternate ease-in-out;
+    pointer-events: none;
 }
 
 /* Blob 1: Top Left (Violet/Blue) */
@@ -123,16 +133,13 @@ body::after {
     100% { transform: translate(20px, -20px) scale(1.1); }
 }
 
-/* * PART 2: THE CERAMIC ENGINE (REPLACES GLASS)
- * This maps your existing class names to the new Premium Style.
- */
-
 /* =========================================
-   4. CARDS & PANELS (The "Solid Volume" Look)
+   4. SEMANTIC COMPONENT CLASSES
    ========================================= */
 
-/* The Primary Card (Used for Quizzes, Subjects) */
-.glass-card {
+/* --- 4.1 THE PREMIUM CARD (Container) --- */
+/* Replaces: .glass-card, .bg-slate-800, etc. */
+.premium-card {
     position: relative;
     isolation: isolate;
     overflow: hidden;
@@ -152,7 +159,7 @@ body::after {
 }
 
 /* Dark Mode Card */
-.dark .glass-card {
+.dark .premium-card {
     background: linear-gradient(160deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
     border: 1px solid rgba(255, 255, 255, 0.05);
     box-shadow: 
@@ -161,7 +168,7 @@ body::after {
 }
 
 /* Hover State: Physical Lift */
-.glass-card:hover {
+.premium-card:hover {
     transform: translateY(-4px) scale(1.01);
     box-shadow: 
         0 20px 40px -5px rgba(0, 0, 0, 0.1),
@@ -170,23 +177,35 @@ body::after {
 }
 
 /* Active State: Pressed In */
-.glass-card:active {
+.premium-card:active {
     transform: scale(0.98);
     box-shadow: 
         0 2px 5px rgba(0,0,0,0.05),
         inset 0 2px 4px rgba(0,0,0,0.05);
 }
 
-/* Secondary Panels (Used for smaller widgets) */
-.glass-panel {
+/* --- 4.2 THE PREMIUM PANEL (Widget) --- */
+/* Replaces: .glass-panel, .bg-white/5, etc. */
+.premium-panel {
     background: rgba(255, 255, 255, 0.6);
     backdrop-filter: blur(12px); /* Lighter blur for static items */
     border: 1px solid rgba(255,255,255,0.5);
     border-radius: 20px;
 }
-.dark .glass-panel {
+.dark .premium-panel {
     background: rgba(15, 23, 42, 0.6);
     border-color: rgba(255,255,255,0.05);
+}
+
+/* --- 4.3 TYPOGRAPHY HELPERS --- */
+.premium-text-head {
+    color: var(--text-primary);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+}
+.premium-text-body {
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
 }
 
 /* =========================================
@@ -194,60 +213,58 @@ body::after {
    ========================================= */
 
 /* The Header: "Frosted Shield" */
-/* Note: Applied via header tag in HTML usually, or utility classes */
-header {
+/* Applied to <header> tags automatically or use .premium-header */
+header, .premium-header {
     background: rgba(240, 244, 248, 0.95); /* Matches bg-app but opaque */
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(0,0,0,0.05);
+    border-bottom: 1px solid var(--border-subtle);
     box-shadow: 0 4px 20px -5px rgba(0,0,0,0.05);
     transition: background 0.3s ease;
+    z-index: 40;
 }
-.dark header {
+.dark header, .dark .premium-header {
     background: rgba(2, 6, 23, 0.95);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
 /* The Bottom Dock: "Porcelain Capsule" */
-#main-nav {
-    /* Floating positioning is handled in JS/HTML classes usually, 
-       but we reinforce the style here */
+/* Applied to ID #main-nav automatically or use .premium-dock */
+#main-nav, .premium-dock {
     background: #ffffff;
-    border: 1px solid rgba(0,0,0,0.05);
+    border: 1px solid var(--border-subtle);
     border-radius: 999px; /* Stadium Shape */
     box-shadow: 
         0 10px 40px -5px rgba(0,0,0,0.15), /* Deep Shadow */
         inset 0 1px 0 rgba(255,255,255,1);
+    /* Dimensions are handled by JS layout classes, this handles LOOK */
 }
-.dark #main-nav {
+.dark #main-nav, .dark .premium-dock {
     background: #0f172a;
     border: 1px solid rgba(255,255,255,0.1);
     box-shadow: 0 10px 40px -5px rgba(0,0,0,0.5);
 }
 
 /* Active Dock Buttons */
-#main-nav .nav-btn {
+#main-nav .nav-btn, .premium-dock .nav-btn {
     opacity: 0.6;
     transition: all 0.3s var(--ease-elastic);
     border-radius: 16px;
+    color: var(--text-secondary);
 }
-#main-nav .nav-btn.active {
+#main-nav .nav-btn.active, .premium-dock .nav-btn.active {
     opacity: 1;
     background: var(--bg-app); /* Matches background, creating "cutout" look */
     color: var(--primary);
     transform: translateY(-2px);
+    font-weight: 700;
 }
-.dark #main-nav .nav-btn.active {
+.dark #main-nav .nav-btn.active, .dark .premium-dock .nav-btn.active {
     background: rgba(255,255,255,0.05);
     color: #fff;
     text-shadow: 0 0 10px rgba(255,255,255,0.5);
 }
 
-/* * PART 3: LAYOUTS & COMPONENTS
- * Preserving your app's specific structure logic.
- */
-
 /* =========================================
-   6. VIEW CONTAINERS & GRIDS
+   6. LAYOUT & INTERACTIVE ELEMENTS
    ========================================= */
 
 .view-container {
@@ -255,49 +272,9 @@ header {
     width: 100%;
     min-height: 100vh;
     padding-top: var(--safe-area-top);
-    padding-bottom: calc(var(--dock-height) + var(--safe-area-bottom));
+    padding-bottom: 8rem; /* Ensure space for dock */
     animation: fade-in 0.4s var(--ease-smooth);
 }
-
-/* Quiz Mode Override (Fullscreen) */
-.view-container.quiz-mode {
-    padding-bottom: 0;
-    z-index: 50;
-    background: var(--bg-app);
-}
-
-/* Dashboard Grid (Masonry) */
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    padding: 1rem;
-    padding-bottom: 6rem;
-}
-@media (min-width: 768px) {
-    .dashboard-grid {
-        grid-template-columns: repeat(3, 1fr);
-        max-width: 1024px;
-        margin: 0 auto;
-    }
-}
-.col-span-2 { grid-column: span 2; }
-
-/* Analysis Grid (Stats) */
-#analysis-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    padding-bottom: 6rem;
-}
-@media (min-width: 640px) {
-    #analysis-grid { grid-template-columns: repeat(2, 1fr); }
-    #analysis-grid > *:first-child { grid-column: 1 / -1; }
-}
-
-/* =========================================
-   7. BUTTONS & INTERACTIVE ELEMENTS
-   ========================================= */
 
 /* Primary Action Button (Gradient) */
 .btn-primary {
@@ -307,6 +284,8 @@ header {
     border-radius: 16px;
     box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
     transition: transform 0.2s var(--ease-elastic);
+    border: none;
+    cursor: pointer;
 }
 .btn-primary:active {
     transform: scale(0.96);
@@ -317,57 +296,11 @@ header {
     background: var(--grad-royal);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-}
-
-/* Progress Bars */
-.progress-track {
-    background: rgba(0,0,0,0.05);
-    border-radius: 999px;
-    overflow: hidden;
-}
-.dark .progress-track { background: rgba(255,255,255,0.1); }
-
-.progress-fill {
-    height: 100%;
-    background: var(--primary);
-    border-radius: 999px;
-    transition: width 1s linear;
+    background-clip: text;
 }
 
 /* =========================================
-   8. SPECIFIC WIDGETS (Oracle, Toasts)
-   ========================================= */
-
-/* Oracle Container */
-#oracle-container {
-    position: relative;
-    width: 100%;
-    max-width: 300px;
-    aspect-ratio: 1/1;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Toast Notifications */
-#toast-container {
-    position: fixed;
-    top: var(--safe-area-top);
-    left: 0;
-    width: 100%;
-    z-index: 100;
-    display: flex;
-    justify-content: center;
-    pointer-events: none;
-}
-
-/* Scrollbar Hiding */
-::-webkit-scrollbar { width: 0px; background: transparent; }
-* { scrollbar-width: none; }
-
-/* =========================================
-   9. ANIMATIONS (Keyframes)
+   7. UTILITIES & ANIMATIONS
    ========================================= */
 
 .animate-fade-in { animation: fade-in 0.6s var(--ease-smooth) forwards; }
@@ -392,24 +325,16 @@ header {
     to { transform: rotate(360deg); }
 }
 
-@keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-}
-
 /* Desktop Constraints */
 @media (min-width: 1024px) {
     #app-container {
         max-width: 1024px;
         margin: 0 auto;
-        border-left: 1px solid rgba(0,0,0,0.05);
-        border-right: 1px solid rgba(0,0,0,0.05);
+        border-left: 1px solid var(--border-subtle);
+        border-right: 1px solid var(--border-subtle);
         background-color: var(--bg-app);
         min-height: 100vh;
         box-shadow: 0 0 50px rgba(0,0,0,0.1);
     }
-    .dark #app-container {
-        border-color: rgba(255,255,255,0.05);
-        box-shadow: 0 0 50px rgba(0,0,0,0.5);
-    }
 }
+
