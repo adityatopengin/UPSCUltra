@@ -1,96 +1,168 @@
 /**
- * MAIN.JS (DIAGNOSTIC MODE)
- * Purpose: Force the app to start and report missing files.
+ * MAIN.JS (PRODUCTION - SAFE MODE)
+ * Version: 3.2.0
+ * Status: Review Module Disabled (to prevent crash)
  */
 
-// Core Services (Must load)
 import { DB } from './services/db.js';
 import { CONFIG } from './config.js';
+import { MasterAggregator } from './services/master-aggregator.js';
+import { Engine } from './engine/quiz-engine.js';
+
+// ✅ UI MANAGERS
+import { UI } from './ui/ui-manager.js'; 
+
+// ✅ VIEW CONTROLLERS
+import { UIHome } from './ui/views/ui-home.js';
+import { UIQuiz } from './ui/views/ui-quiz.js';
+import { UIResults } from './ui/views/ui-results.js';
+
+// 🔴 REVIEW MODULE DISABLED (Prevents White Screen)
+// import { UIReview } from './ui/views/ui-review.js'; 
 
 export const Main = {
     state: {
         currentView: 'home',
-        isQuizActive: false
+        activeSubject: null,
+        isQuizActive: false,
+        lastResultId: null,
+        lastResult: null
     },
 
     async init() {
-        console.log("🚀 DIAGNOSTIC MODE: Starting...");
+        console.log(`🚀 SYSTEM LAUNCH: v${CONFIG.version}`);
 
-        // 1. Test Database
         try {
+            // 1. Initialize DB & UI
             await DB.connect();
-            console.log("✅ Database: Connected");
+            if (window.UI) window.UI.init();
+
+            // 2. Initialize Logic
+            if (MasterAggregator) MasterAggregator.init();
+
+            // 3. Start Router
+            this._initRouter();
+
+            // 4. Force Render Home
+            // We use a small timeout to let the DOM settle
+            setTimeout(() => {
+                if (!window.location.hash || window.location.hash === '#review') {
+                    this.navigate('home');
+                } else {
+                    this._handleRoute(); 
+                }
+                
+                // Hide Boot Loader
+                if (window.UI) UI.toggleLoader(false);
+            }, 500);
+
         } catch (e) {
-            console.error("❌ Database: FAILED", e);
-        }
-
-        // 2. Load UI Manager safely
-        try {
-            // Dynamic import to prevent crash if file is missing
-            const module = await import('./ui/ui-manager.js');
-            if (module.UI) {
-                window.UI = module.UI;
-                window.UI.init();
-                console.log("✅ UI Manager: Loaded");
-            }
-        } catch (e) {
-            console.error("❌ UI Manager: MISSING or BROKEN", e);
-        }
-
-        // 3. Load Views safely
-        await this._loadView('Home', './ui/views/ui-home.js');
-        await this._loadView('Quiz', './ui/views/ui-quiz.js');
-        await this._loadView('Results', './ui/views/ui-results.js');
-
-        // 4. Force Boot Complete
-        setTimeout(() => {
-            console.log("✅ BOOT SEQUENCE FINISHED");
-            const loader = document.getElementById('boot-loader');
-            if (loader) loader.style.display = 'none';
-            
-            // Render Home Manually
-            const container = document.getElementById('app-container');
-            if (container) {
-                container.innerHTML = `<div class="p-10 text-center text-white">
-                    <h1 class="text-xl font-bold">System Diagnostics</h1>
-                    <p class="text-slate-400">If you see this, the App Core is working.</p>
-                    <p class="mt-4 text-sm">Check the Console (F12) to see which file failed.</p>
-                    <button onclick="Main.navigate('home')" class="mt-6 px-6 py-2 bg-blue-600 rounded">Try Loading Home</button>
-                </div>`;
-            }
-        }, 1000);
-    },
-
-    async _loadView(name, path) {
-        try {
-            const module = await import(path);
-            const viewName = `UI${name}`;
-            if (module[viewName]) {
-                window[viewName] = module[viewName];
-                console.log(`✅ View ${name}: Loaded`);
-            }
-        } catch (e) {
-            console.error(`❌ View ${name}: FAILED to load from ${path}`, e);
+            console.error("CRITICAL: Boot Failed", e);
+            alert("App Start Failed: " + e.message);
         }
     },
 
-    navigate(viewName) {
-        console.log(`Attempting navigation to: ${viewName}`);
+    navigate(viewName, params = null) {
+        // Safety: Prevent accidental exit during quiz
+        if (this.state.isQuizActive && viewName !== 'quiz') {
+            if (!confirm("⚠️ End Quiz? Progress will be lost.")) return;
+            this.endQuizSession();
+        }
+
+        this.state.currentView = viewName;
+        
+        if (params) {
+            if (params.subjectId) this.state.activeSubject = params.subjectId;
+            if (params.id) this.state.lastResultId = params.id;
+        }
+
+        // Update URL
+        if (viewName === 'quiz') {
+            history.replaceState(null, null, `#${viewName}`);
+            this._handleRoute(); 
+        } else {
+            window.location.hash = `#${viewName}`;
+        }
+    },
+
+    _initRouter() {
+        window.addEventListener('hashchange', () => this._handleRoute());
+    },
+
+    async _handleRoute() {
+        const hash = window.location.hash.replace('#', '') || 'home';
         const container = document.getElementById('app-container');
         
-        if (viewName === 'home' && window.UIHome) window.UIHome.render(container);
-        else if (viewName === 'quiz' && window.UIQuiz) window.UIQuiz.render(container);
-        else if (viewName === 'results' && window.UIResults) window.UIResults.render(container);
-        else alert(`View ${viewName} is not loaded properly.`);
+        // Scroll to top
+        window.scrollTo(0, 0);
+
+        switch (hash.split('?')[0]) {
+            case 'home':
+                if (window.UIHome) await UIHome.render(container);
+                break;
+                
+            case 'quiz':
+                if (window.UIQuiz) UIQuiz.render(container);
+                break;
+                
+            case 'results':
+                if (window.UIResults) await UIResults.render(container);
+                break;
+            
+            case 'review':
+                // 🔴 SAFE FALLBACK
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-[60vh] text-slate-500">
+                        <i class="fa-solid fa-screwdriver-wrench text-4xl mb-4"></i>
+                        <p class="font-bold uppercase text-xs">Review Module Maintenance</p>
+                        <button onclick="Main.navigate('home')" class="mt-4 px-4 py-2 bg-slate-800 rounded-lg text-white text-xs">Go Home</button>
+                    </div>`;
+                break;
+                
+            default:
+                this.navigate('home');
+        }
+        
+        // Update Bottom Dock
+        if (window.UIHeader) UIHeader.updateActiveTab(hash);
     },
-    
-    // Stub for quiz start
-    async selectSubject(id) {
-         console.log("Selected:", id);
-         this.navigate('quiz');
+
+    // --- QUIZ ACTIONS ---
+
+    async selectSubject(subjectId) {
+        this.state.activeSubject = subjectId;
+        await this.startQuizSession(subjectId);
+    },
+
+    async startQuizSession(subjectId) {
+        if (window.UI) UI.toggleLoader(true);
+        await Engine.startSession(subjectId); 
+        this.state.isQuizActive = true;
+        this.navigate('quiz');
+        if (window.UI) UI.toggleLoader(false);
+    },
+
+    handleQuizCompletion(resultData) {
+        this.state.lastResult = resultData;
+        this.state.lastResultId = resultData.id;
+        this.state.isQuizActive = false;
+        this.navigate('results', { id: resultData.id });
+    },
+
+    endQuizSession() {
+        if (Engine) Engine.terminateSession();
+        this.state.isQuizActive = false;
+        this.navigate('home');
+    },
+
+    toggleTheme() {
+        document.documentElement.classList.toggle('dark');
     }
 };
 
 window.Main = Main;
-document.addEventListener('DOMContentLoaded', () => Main.init());
+
+document.addEventListener('DOMContentLoaded', () => {
+    Main.init();
+});
 
