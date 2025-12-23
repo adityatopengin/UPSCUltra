@@ -1,6 +1,6 @@
 /**
  * QUIZ ENGINE (THE BRAIN)
- * Version: 2.3.0 (Fixed Save Crash & Timer)
+ * Version: 2.4.0 (Connected to Real DB)
  * Path: assets/js/engine/quiz-engine.js
  */
 
@@ -27,14 +27,13 @@ export const Engine = {
     // ============================================================
     // 2. SESSION MANAGEMENT
     // ============================================================
-
-    async startSession(subjectId) {
+         async startSession(subjectId) {
         console.log(`🧠 Engine: Starting Session for ${subjectId}`);
         
         // 1. Clean Slate
-        this.terminateSession(); // Ensure any old timers are killed
+        this.terminateSession(); 
 
-        // 2. Setup New State
+        // 2. Setup New State (Initially Active)
         this.state.subjectId = subjectId;
         this.state.active = true;
         this.state.startTime = Date.now();
@@ -42,12 +41,21 @@ export const Engine = {
         this.state.answers = {};
         this.state.bookmarks = new Set();
 
-        // 3. Load Questions
+        // 3. Load Real Questions from DB
         this.state.questions = await this._fetchQuestions(subjectId);
         
+        // 🛡️ CRITICAL FIX: Handle Empty Database Safely
         if (!this.state.questions || this.state.questions.length === 0) {
-            console.error("Engine: No questions found!");
-            return;
+            console.error("Engine: No questions found in DB!");
+            
+            // A. Reset Active State
+            this.state.active = false; 
+            
+            // B. Alert User
+            alert("No questions found! Please wait for Data Seeder to finish.");
+            
+            // C. THROW ERROR so Main.js stops navigation
+            throw new Error("QUIZ_ABORT_NO_DATA"); 
         }
 
         // 4. Set Timer (2 mins per question)
@@ -62,6 +70,7 @@ export const Engine = {
         this._emit('SESSION_START');
     },
 
+     
     async submitQuiz() {
         if (!this.state.active) return;
 
@@ -72,10 +81,10 @@ export const Engine = {
         const result = this._calculateResult();
 
         try {
-            // 1. Save to History
+            // 1. Save to History (Using .put as fixed earlier)
             await DB.put('history', result);
             
-            // 2. Update Mastery (The missing function!)
+            // 2. Update Mastery
             await this._updateMastery(result);
 
             console.log("🧠 Engine: Results Saved Successfully.");
@@ -87,7 +96,6 @@ export const Engine = {
 
         } catch (e) {
             console.error("Engine: Save Failed", e);
-            // Even if save fails, show results so user doesn't get stuck
             if (window.Main && window.Main.handleQuizCompletion) {
                 window.Main.handleQuizCompletion(result);
             }
@@ -144,7 +152,7 @@ export const Engine = {
     // ============================================================
 
     _startTimer() {
-        this._stopTimer(); // Safety clear
+        this._stopTimer(); 
         
         this.timerInterval = setInterval(() => {
             this.state.timeLeft--;
@@ -185,7 +193,6 @@ export const Engine = {
             }
         });
 
-        // Use Date.now() if crypto is unavailable (older phones)
         const id = (window.crypto && window.crypto.randomUUID) 
             ? crypto.randomUUID() 
             : 'res_' + Date.now();
@@ -200,7 +207,8 @@ export const Engine = {
             wrong: wrong,
             skipped: total - (correct + wrong),
             accuracy: correct > 0 ? Math.round((correct / (correct + wrong)) * 100) : 0,
-            totalDuration: this.state.totalDuration - this.state.timeLeft
+            totalDuration: this.state.totalDuration - this.state.timeLeft,
+            questions: this.state.questions // Save questions for "Review Mistakes"
         };
     },
 
@@ -210,16 +218,11 @@ export const Engine = {
         }));
     },
 
-    // ============================================================
-    // 5. MISSING FUNCTION ADDED HERE
-    // ============================================================
     async _updateMastery(result) {
         try {
-            // Update the "Academic State" table for the Oracle
             const subjectId = result.subject;
             const currentEntry = await DB.get('academic_state', subjectId) || { subjectId, mastery: 0, attempts: 0 };
             
-            // Simple Moving Average for Mastery
             const newMastery = ((currentEntry.mastery * currentEntry.attempts) + result.score) / (currentEntry.attempts + 1);
             
             currentEntry.mastery = newMastery;
@@ -234,22 +237,52 @@ export const Engine = {
     },
 
     // ============================================================
-    // 6. DATA FETCHING
+    // 6. REAL DATA FETCHING (REPLACES MOCK)
     // ============================================================
 
     async _fetchQuestions(subjectId) {
-        // Mock Generator
-        return Array.from({ length: 15 }, (_, i) => ({
-            id: `q_${subjectId}_${i}`,
-            text: `Question ${i + 1} for ${subjectId}. <br> What is the correct answer?`,
-            options: [
-                "This is the wrong answer",
-                "This is the correct answer (Option B)",
-                "Another wrong answer",
-                "Definitely not this one"
-            ],
-            correctAnswer: 1 
-        }));
+        try {
+            // 1. Get Random Keys for the subject
+            // We fetch 15 random question IDs from the DB 'questions' store
+            const keys = await DB.getRandomKeys('questions', 'subject', subjectId, 15);
+            
+            if (!keys || keys.length === 0) return [];
+
+            // 2. Fetch the actual question objects
+            const promises = keys.map(key => DB.get('questions', key));
+            const questions = await Promise.all(promises);
+            
+            // 3. Shuffle Options for display
+            return questions.map(q => this._randomizeOptions(q));
+
+        } catch(e) {
+            console.error("Engine: DB Fetch Failed", e);
+            return [];
+        }
+    },
+
+    /**
+     * Helper to shuffle options so A/B/C/D aren't always the same.
+     * Keeps track of the correct answer's new position.
+     */
+    _randomizeOptions(question) {
+        // Clone to avoid modifying DB object directly
+        const q = JSON.parse(JSON.stringify(question));
+        
+        // Map options to objects to track original index
+        let optionsWithIndex = q.options.map((text, idx) => ({ text, originalIndex: idx }));
+        
+        // Shuffle
+        optionsWithIndex.sort(() => Math.random() - 0.5);
+        
+        // Find where the correct answer moved to
+        const newCorrectIndex = optionsWithIndex.findIndex(o => o.originalIndex === q.correctOption);
+        
+        return {
+            ...q,
+            options: optionsWithIndex.map(o => o.text),
+            correctAnswer: newCorrectIndex // Remap correct index
+        };
     }
 };
 
