@@ -1,7 +1,10 @@
 /**
  * MAIN.JS (FINAL PRODUCTION BUILD)
- * Version: 3.0.0
- * All systems active: Dashboard, Quiz, Results, and Logic.
+ * Version: 3.1.0
+ * Responsibilities:
+ * 1. Bootstraps the Application (DB, Services, UI).
+ * 2. Manages Global State (User, Theme, Quiz Status).
+ * 3. Handles Routing (Home <-> Quiz <-> Results <-> Review).
  */
 
 import { DB } from './services/db.js';
@@ -9,13 +12,16 @@ import { CONFIG } from './config.js';
 import { MasterAggregator } from './services/master-aggregator.js';
 import { Engine } from './engine/quiz-engine.js';
 
-// ✅ UNCOMMENTING ALL VIEWS
+// ✅ UI MANAGERS
+import { UI } from './ui/ui-manager.js'; 
+
+// ✅ VIEW CONTROLLERS
 import { UIHome } from './ui/views/ui-home.js';
 import { UIQuiz } from './ui/views/ui-quiz.js';
 import { UIResults } from './ui/views/ui-results.js';
-import { UI } from './ui/ui-manager.js'; 
+import { UIReview } from './ui/views/ui-review.js'; // The new Review Module
 
-// We use conditional loading for Stats/Arcade/Settings to be safe
+// Optional: Lazy load others if needed
 // import { UIStats } from './ui/views/ui-stats.js'; 
 
 export const Main = {
@@ -26,7 +32,8 @@ export const Main = {
         currentView: 'home',
         activeSubject: null,
         isQuizActive: false,
-        lastResultId: null
+        lastResultId: null,
+        lastResult: null // Critical: Holds data in memory for fast access
     },
 
     // ============================================================
@@ -39,20 +46,20 @@ export const Main = {
             // 1. Database & Config
             await DB.connect();
             
-            // 2. Logic Layer
+            // 2. Logic Layer (The Brain)
             if (MasterAggregator) MasterAggregator.init();
 
-            // 3. UI Shell
+            // 3. UI Shell (The Body)
             if (window.UI) window.UI.init();
 
-            // 4. Preferences
+            // 4. Preferences (Theme)
             this._loadPreferences();
 
-            // 5. Router
+            // 5. Router (The Legs)
             this._initRouter();
 
             // 6. Initial Render
-            // Short delay to ensure DOM is painted
+            // Short delay to ensure DOM is painted and Shell is ready
             setTimeout(() => {
                 if (!window.location.hash) {
                     this.navigate('home');
@@ -60,7 +67,7 @@ export const Main = {
                     this._handleRoute(); 
                 }
                 
-                // Hide Boot Loader
+                // Hide Boot Loader with Fade Out
                 const loader = document.getElementById('boot-loader');
                 if (loader) {
                     loader.style.opacity = '0';
@@ -81,7 +88,7 @@ export const Main = {
     // ============================================================
     
     navigate(viewName, params = null) {
-        // Safety Guard for Active Quiz
+        // Safety Guard: Don't leave a live quiz without warning
         if (this.state.isQuizActive && viewName !== 'quiz') {
             if (!confirm("⚠️ End Quiz? Progress will be lost.")) return;
             this.endQuizSession();
@@ -89,37 +96,41 @@ export const Main = {
 
         this.state.currentView = viewName;
         
-        if (params && params.subjectId) {
-            this.state.activeSubject = params.subjectId;
-        }
-        if (params && params.id) {
-            this.state.lastResultId = params.id;
+        // Handle Params
+        if (params) {
+            if (params.subjectId) this.state.activeSubject = params.subjectId;
+            if (params.id) this.state.lastResultId = params.id;
         }
 
         // Update URL & TRIGGER RENDER
         if (viewName === 'quiz') {
-            // replaceState is silent, so we must manually trigger the route handler
+            // replaceState is silent, so we must manually kick the router
             history.replaceState(null, null, `#${viewName}`);
-            this._handleRoute(); // <--- ✅ THE FIX: Manually call the router
+            this._handleRoute(); 
         } else {
-            // This automatically triggers 'hashchange', which calls _handleRoute
+            // Normal navigation triggers 'hashchange' automatically
             window.location.hash = `#${viewName}`;
+            // If URL is already there (refresh/same click), force render
+            if (window.location.hash === `#${viewName}`) {
+                this._handleRoute();
+            }
         }
     },
-
 
     _initRouter() {
         window.addEventListener('hashchange', () => this._handleRoute());
     },
 
     async _handleRoute() {
-        const hash = window.location.hash.replace('#', '') || 'home';
+        // Parse Hash: "#results?id=123" -> "results"
+        const cleanHash = window.location.hash.split('?')[0].replace('#', '') || 'home';
         const container = document.getElementById('app-container');
         
+        // Scroll to top on nav
         window.scrollTo(0, 0);
 
         // ROUTING TABLE
-        switch (hash) {
+        switch (cleanHash) {
             case 'home':
                 if (window.UIHome) await UIHome.render(container);
                 break;
@@ -131,23 +142,27 @@ export const Main = {
             case 'results':
                 if (window.UIResults) await UIResults.render(container);
                 break;
+            
+            case 'review':
+                // ✅ NEW ROUTE
+                if (window.UIReview) await UIReview.render(container);
+                break;
 
             case 'stats':
                 // Check if Stats loaded, else safe fallback
                 if (window.UIStats) await UIStats.render(container);
                 else {
                     container.innerHTML = "<h2 class='p-10 text-center text-slate-500'>Stats Module Loading...</h2>";
-                    // Lazy load functionality could go here
                 }
                 break;
                 
             default:
-                console.warn(`Router: Unknown view ${hash}, redirecting Home.`);
+                console.warn(`Router: Unknown view ${cleanHash}, redirecting Home.`);
                 this.navigate('home');
         }
         
-        // Update Bottom Dock Active State
-        if (window.UIHeader) UIHeader.updateActiveTab(hash);
+        // Update Bottom Dock Active State (Home/Stats/etc.)
+        if (window.UIHeader) UIHeader.updateActiveTab(cleanHash);
     },
 
     // ============================================================
@@ -157,14 +172,14 @@ export const Main = {
     async selectSubject(subjectId) {
         console.log(`Main: Starting Quiz for -> ${subjectId}`);
         
-        // Validate Subject ID
+        // Validate Subject ID against Config
         const gs1 = CONFIG.subjectsGS1 || [];
         const csat = CONFIG.subjectsCSAT || [];
         const isValid = gs1.some(s => s.id === subjectId) || csat.some(s => s.id === subjectId);
         
         if (!isValid) {
             console.error("Invalid Subject ID");
-            return;
+            return; // Fail silently or show toast
         }
 
         this.state.activeSubject = subjectId;
@@ -185,7 +200,7 @@ export const Main = {
 
         } catch (e) {
             console.error("Main: Failed to start quiz", e);
-            alert("Error starting quiz.");
+            alert("Error starting quiz. Please reload.");
         } finally {
             if (window.UI) UI.toggleLoader(false);
         }
@@ -193,7 +208,15 @@ export const Main = {
 
     handleQuizCompletion(resultData) {
         console.log("Main: Quiz Completed. Results:", resultData);
+        
+        // 1. Store in Memory (Critical Safety Net)
+        // If DB save is slow, UIResults can reads this immediately
+        this.state.lastResult = resultData;
+        this.state.lastResultId = resultData.id;
+        
         this.state.isQuizActive = false;
+        
+        // 2. Navigate to Results
         this.navigate('results', { id: resultData.id });
     },
 
@@ -204,6 +227,7 @@ export const Main = {
         }
         this.state.isQuizActive = false;
         this.state.activeSubject = null;
+        this.navigate('home');
     },
 
     // ============================================================
@@ -229,8 +253,10 @@ export const Main = {
     }
 };
 
+// Global Export
 window.Main = Main;
 
+// Auto-boot
 document.addEventListener('DOMContentLoaded', () => {
     Main.init();
 });
