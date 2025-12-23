@@ -1,7 +1,7 @@
 /**
  * DB SERVICE (THE WAREHOUSE)
  * Path: assets/js/services/db.js
- * Version: 2.1.0
+ * Version: 2.2.0
  * Status: Added StorageService Export
  */
 
