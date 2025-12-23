@@ -1,105 +1,203 @@
 /**
- * MAIN.JS (DEBUGGER EDITION)
- * Purpose: Catch "Silent Spin" errors and show them on screen.
+ * MAIN.JS (FINAL PRODUCTION)
+ * Version: 4.0.0
+ * Status: All Systems Go
  */
 
-// 1. GLOBAL ERROR TRAP (Runs before anything else)
-window.onerror = function(message, source, lineno, colno, error) {
-    const errorBox = document.getElementById('debug-box') || createDebugBox();
-    errorBox.innerHTML += `
-        <div style="margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-            <strong style="color: #ff5555;">❌ CRASH DETECTED:</strong><br>
-            ${message}<br>
-            <small style="color: #aaa;">${source.split('/').pop()} : Line ${lineno}</small>
-        </div>
-    `;
-    return false;
-};
+import { DB } from './services/db.js';
+import { CONFIG } from './config.js';
+import { MasterAggregator } from './services/master-aggregator.js';
+import { Engine } from './engine/quiz-engine.js';
+import { UI } from './ui/ui-manager.js'; 
 
-// Trap Promise Errors (Async fails)
-window.onunhandledrejection = function(event) {
-    const errorBox = document.getElementById('debug-box') || createDebugBox();
-    errorBox.innerHTML += `
-        <div style="margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-            <strong style="color: #ffaa00;">⚠️ ASYNC ERROR:</strong><br>
-            ${event.reason ? event.reason.message : event.reason}
-        </div>
-    `;
-};
+// View Imports
+import { UIHome } from './ui/views/ui-home.js';
+import { UIQuiz } from './ui/views/ui-quiz.js';
+import { UIResults } from './ui/views/ui-results.js';
+import { UIReview } from './ui/views/ui-review.js';
+import { UISettings } from './ui/views/ui-settings.js';
+import { UIArcade } from './ui/views/ui-arcade.js';
+import { UIStats } from './ui/views/ui-stats.js';
 
-function createDebugBox() {
-    document.body.innerHTML = ''; // Clear screen
-    const div = document.createElement('div');
-    div.id = 'debug-box';
-    div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:#1a1a1a; color:white; padding:20px; font-family:monospace; z-index:9999; overflow:auto; font-size: 14px;";
-    div.innerHTML = "<h2 style='color:cyan; border-bottom:2px solid cyan;'>🐞 SYSTEM DEBUGGER</h2>";
-    document.body.appendChild(div);
-    return div;
-}
+export const Main = {
+    // ============================================================
+    // 1. STATE
+    // ============================================================
+    state: {
+        currentView: 'home',
+        activeSubject: null,
+        isQuizActive: false,
+        lastResultId: null,
+        lastResult: null
+    },
 
-// 2. ATTEMPT IMPORTS (One by one to find the killer)
-console.log("🔍 Starting Import Sequence...");
+    // ============================================================
+    // 2. INITIALIZATION
+    // ============================================================
+    async init() {
+        console.log(`🚀 SYSTEM LAUNCH: v${CONFIG.version}`);
 
-try {
-    // A. Config
-    const config = await import('./config.js');
-    log("✅ Config Loaded");
+        try {
+            // 1. Database & UI Shell
+            await DB.connect();
+            if (window.UI) await window.UI.init();
 
-    // B. Database
-    const db = await import('./services/db.js');
-    log("✅ DB Service Loaded");
+            // 2. Logic Engines
+            if (MasterAggregator) MasterAggregator.init();
 
-    // C. Engines (The likely suspects)
-    const master = await import('./services/master-aggregator.js');
-    log("✅ MasterAggregator Loaded");
+            // 3. Router
+            this._initRouter();
 
-    const quizEngine = await import('./engine/quiz-engine.js');
-    log("✅ Quiz Engine Loaded");
+            // 4. Initial Render
+            // Short delay to ensure DOM is ready
+            setTimeout(() => {
+                // If the URL has a hash (e.g. #quiz), go there. Otherwise Home.
+                const hash = window.location.hash;
+                if (!hash || hash === '#') {
+                    this.navigate('home');
+                } else {
+                    this._handleRoute(); 
+                }
+                
+                // Hide Boot Loader
+                if (window.UI) UI.toggleLoader(false);
+                
+                // Remove Debugger if it exists
+                const dbg = document.getElementById('debug-box');
+                if (dbg) dbg.remove();
 
-    // D. UI Manager (Check dependencies)
-    const ui = await import('./ui/ui-manager.js');
-    log("✅ UI Manager Loaded");
+            }, 500);
+
+            console.log("✅ ALL SYSTEMS ONLINE.");
+
+        } catch (e) {
+            console.error("CRITICAL: Boot Failed", e);
+            alert("App Start Failed: " + e.message);
+        }
+    },
+
+    // ============================================================
+    // 3. NAVIGATION (ROUTER)
+    // ============================================================
     
-    if (window.UI) window.UI.init();
+    navigate(viewName, params = null) {
+        // Safety: Prevent accidental exit during quiz
+        if (this.state.isQuizActive && viewName !== 'quiz') {
+            if (!confirm("⚠️ End Quiz? Progress will be lost.")) return;
+            this.endQuizSession();
+        }
 
-    // E. Views
-    await import('./ui/views/ui-home.js');
-    log("✅ Home View Loaded");
-    
-    await import('./ui/views/ui-quiz.js');
-    log("✅ Quiz View Loaded");
+        this.state.currentView = viewName;
+        
+        if (params) {
+            if (params.subjectId) this.state.activeSubject = params.subjectId;
+            if (params.id) this.state.lastResultId = params.id;
+        }
 
-    // F. Start App
-    log("🚀 LAUNCHING APP...");
-    
-    // Simulate Main Object
-    window.Main = {
-        navigate: (view) => console.log("Navigating to " + view),
-        init: () => console.log("Main Init")
-    };
-    
-    // Manually trigger Home render to see if it works
-    const container = document.getElementById('app-container');
-    if(container && window.UIHome) {
-        window.UIHome.render(container);
-        // Hide Debugger if successful after 2 seconds
-        setTimeout(() => {
-             const dbg = document.getElementById('debug-box');
-             if(dbg) dbg.style.display = 'none';
-        }, 3000);
+        // Update URL
+        if (viewName === 'quiz') {
+            history.replaceState(null, null, `#${viewName}`);
+            this._handleRoute(); 
+        } else {
+            window.location.hash = `#${viewName}`;
+        }
+    },
+
+    _initRouter() {
+        window.addEventListener('hashchange', () => this._handleRoute());
+    },
+
+    async _handleRoute() {
+        const hash = window.location.hash.replace('#', '') || 'home';
+        const container = document.getElementById('app-container');
+        
+        // Scroll to top
+        window.scrollTo(0, 0);
+
+        // ROUTING TABLE
+        switch (hash.split('?')[0]) {
+            case 'home':
+                if (window.UIHome) await UIHome.render(container);
+                break;
+                
+            case 'quiz':
+                if (window.UIQuiz) UIQuiz.render(container);
+                break;
+                
+            case 'results':
+                if (window.UIResults) await UIResults.render(container);
+                break;
+            
+            case 'review':
+                if (window.UIReview) await UIReview.render(container);
+                break;
+
+            case 'settings':
+                if (window.UISettings) UISettings.render(container);
+                break;
+
+            case 'arcade':
+                if (window.UIArcade) UIArcade.render(container);
+                break;
+
+            case 'stats':
+                if (window.UIStats) await UIStats.render(container);
+                break;
+                
+            default:
+                this.navigate('home');
+        }
+        
+        // Update Bottom Dock
+        if (window.UIHeader) UIHeader.updateActiveTab(hash);
+    },
+
+    // ============================================================
+    // 4. ACTIONS
+    // ============================================================
+
+    // --- QUIZ ---
+    async selectSubject(subjectId) {
+        this.state.activeSubject = subjectId;
+        await this.startQuizSession(subjectId);
+    },
+
+    async startQuizSession(subjectId) {
+        if (window.UI) UI.toggleLoader(true);
+        await Engine.startSession(subjectId); 
+        this.state.isQuizActive = true;
+        this.navigate('quiz');
+        if (window.UI) UI.toggleLoader(false);
+    },
+
+    handleQuizCompletion(resultData) {
+        this.state.lastResult = resultData;
+        this.state.lastResultId = resultData.id;
+        this.state.isQuizActive = false;
+        this.navigate('results', { id: resultData.id });
+    },
+
+    endQuizSession() {
+        if (Engine) Engine.terminateSession();
+        this.state.isQuizActive = false;
+        this.navigate('home');
+    },
+
+    // --- UTILS ---
+    showResult(id) {
+        this.navigate('results', { id: id });
+    },
+
+    toggleTheme() {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        if(window.UI) UI.showToast(isDark ? "Dark Mode Active" : "Light Mode Active");
     }
+};
 
-} catch (e) {
-    // This will catch the specific file that failed
-    window.onerror(e.message, e.fileName || "Unknown File", e.lineNumber || 0);
-}
+window.Main = Main;
 
-function log(msg) {
-    console.log(msg);
-    const box = document.getElementById('debug-box');
-    if(box) box.innerHTML += `<div style="color:#55ff55;">${msg}</div>`;
-}
-
-// Dummy Export to keep it a module
-export const Debugger = true;
+document.addEventListener('DOMContentLoaded', () => {
+    Main.init();
+});
 
