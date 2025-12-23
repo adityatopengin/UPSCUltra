@@ -6,14 +6,14 @@
     
     <title>UPSC SuperApp | Next-Gen Prep</title>
     <meta name="description" content="AI-Powered UPSC Preparation with Holographic Analytics and Adaptive Testing.">
+    
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -25,6 +25,7 @@
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'], /* Added for New Style */
                     },
                     colors: {
                         slate: {
@@ -42,11 +43,11 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="assets/icons/favicon.png">
 </head>
-<body class="bg-slate-900 text-slate-200 antialiased select-none">
+
+<body class="antialiased select-none">
 
     <script>
         window.addEventListener('error', function(e) {
-            // Don't show harmless resize errors
             if (e.message && e.message.includes('ResizeObserver')) return;
 
             const loader = document.getElementById('boot-loader');
@@ -80,7 +81,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>
-        // Only init if it successfully loaded
         if (window.eruda) eruda.init();
     </script>
 
@@ -89,7 +89,6 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // We use type: 'classic' to prevent MIME type errors on some hosts
                 navigator.serviceWorker.register('./service-worker.js', { type: 'classic' })
                     .then(reg => console.log('SW Registered'))
                     .catch(err => console.log('SW Failed', err));
