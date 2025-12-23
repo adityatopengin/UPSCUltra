@@ -40,9 +40,10 @@ export const UIStats = {
     // ============================================================
 
     async render(container) {
-        console.log("📊 UIStats: Initializing Analytics...");
+        console.log("投 UIStats: Initializing Analytics...");
         container.innerHTML = '';
-        container.className = 'view-container pb-24 bg-slate-900 min-h-screen';
+        // REFACTOR: Removed bg-slate-900. Increased padding to pb-40.
+        container.className = 'view-container pb-40 min-h-screen';
 
         // 1. Show Loading Skeleton first
         container.innerHTML = this._getSkeletonTemplate();
@@ -73,11 +74,11 @@ export const UIStats = {
                 return;
             }
             
-            console.log("📡 UIStats: Fetching Chart.js...");
+            console.log("藤 UIStats: Fetching Chart.js...");
             const script = document.createElement('script');
             script.src = this.config.chartJsUrl;
             script.onload = () => {
-                console.log("📡 UIStats: Chart.js Ready.");
+                console.log("藤 UIStats: Chart.js Ready.");
                 // Register defaults for Premium Look
                 Chart.defaults.color = this.config.colors.text;
                 Chart.defaults.font.family = "'Inter', sans-serif";
@@ -94,29 +95,31 @@ export const UIStats = {
     // ============================================================
 
     _renderShell(container) {
+        // REFACTOR: Removed bg-slate-900/backdrop-blur/borders from header.
+        // Using semantic .premium-text-head and .premium-panel
         container.innerHTML = `
-            <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-white/5 px-6 pt-12 pb-4">
+            <header class="sticky top-0 z-30 px-6 pt-12 pb-4">
                 <div class="flex items-center justify-between mb-6">
                     <div>
-                        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Deep Analysis</h2>
-                        <h1 class="text-2xl font-black text-white tracking-tight">Your DNA</h1>
+                        <h2 class="text-xs font-bold opacity-60 uppercase tracking-widest">Deep Analysis</h2>
+                        <h1 class="premium-text-head text-2xl font-black tracking-tight">Your DNA</h1>
                     </div>
                     <div class="flex flex-col items-end">
-                        <span class="text-[10px] text-slate-500 font-bold uppercase">Rank</span>
+                        <span class="text-[10px] font-bold opacity-50 uppercase">Rank</span>
                         <span class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
                             ${this._calculateGlobalRank()}
                         </span>
                     </div>
                 </div>
 
-                <div class="flex p-1 bg-slate-800/50 rounded-xl border border-white/5 backdrop-blur-sm">
-                    <button onclick="UIStats.switchTab('overview')" id="tab-overview" class="flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${this.state.activeTab === 'overview' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}">
+                <div class="flex p-1 premium-panel rounded-xl">
+                    <button onclick="UIStats.switchTab('overview')" id="tab-overview" class="flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${this.state.activeTab === 'overview' ? 'bg-white/10 shadow-lg' : 'opacity-50 hover:opacity-80'}">
                         Overview
                     </button>
-                    <button onclick="UIStats.switchTab('psych')" id="tab-psych" class="flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${this.state.activeTab === 'psych' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}">
+                    <button onclick="UIStats.switchTab('psych')" id="tab-psych" class="flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${this.state.activeTab === 'psych' ? 'bg-white/10 shadow-lg' : 'opacity-50 hover:opacity-80'}">
                         Psych
                     </button>
-                    <button onclick="UIStats.switchTab('timeline')" id="tab-timeline" class="flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${this.state.activeTab === 'timeline' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}">
+                    <button onclick="UIStats.switchTab('timeline')" id="tab-timeline" class="flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${this.state.activeTab === 'timeline' ? 'bg-white/10 shadow-lg' : 'opacity-50 hover:opacity-80'}">
                         Timeline
                     </button>
                 </div>
@@ -133,10 +136,10 @@ export const UIStats = {
     _getSkeletonTemplate() {
         return `
             <div class="pt-20 px-6 animate-pulse">
-                <div class="h-8 w-1/2 bg-slate-800 rounded mb-4"></div>
-                <div class="h-12 w-full bg-slate-800 rounded-xl mb-8"></div>
-                <div class="h-64 w-full bg-slate-800 rounded-2xl mb-4"></div>
-                <div class="h-32 w-full bg-slate-800 rounded-2xl"></div>
+                <div class="h-8 w-1/2 bg-white/10 rounded mb-4"></div>
+                <div class="h-12 w-full bg-white/10 rounded-xl mb-8"></div>
+                <div class="h-64 w-full bg-white/10 rounded-2xl mb-4"></div>
+                <div class="h-32 w-full bg-white/10 rounded-2xl"></div>
             </div>
         `;
     },
@@ -158,9 +161,9 @@ export const UIStats = {
             const btn = document.getElementById(`tab-${t}`);
             if (btn) {
                 if (t === tabName) {
-                    btn.className = "flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all bg-slate-700 text-white shadow-lg";
+                    btn.className = "flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all bg-white/10 shadow-lg";
                 } else {
-                    btn.className = "flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all text-slate-500 hover:text-slate-300";
+                    btn.className = "flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all opacity-50 hover:opacity-80";
                 }
             }
         });
@@ -189,12 +192,13 @@ export const UIStats = {
         const dataPoints = Object.values(subjects).map(s => s.mastery || 0);
 
         // 2. Inject Layout
+        // REFACTOR: Replaced glass-card/glass-panel with premium-card/premium-panel
         parent.innerHTML = `
-            <div class="glass-card p-4 mb-6 relative overflow-hidden">
+            <div class="premium-card p-4 mb-6 relative overflow-hidden">
                 <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
                 
                 <div class="flex justify-between items-center mb-4 px-2">
-                    <h3 class="text-sm font-bold text-white uppercase tracking-wider">Subject Mastery</h3>
+                    <h3 class="text-sm font-bold uppercase tracking-wider">Subject Mastery</h3>
                     <i class="fa-solid fa-bullseye text-blue-400"></i>
                 </div>
                 
@@ -205,11 +209,11 @@ export const UIStats = {
 
             <div class="grid grid-cols-1 gap-6">
                 
-                <div class="glass-panel rounded-2xl p-5 border-l-4 border-rose-500">
+                <div class="premium-panel rounded-2xl p-5 border-l-4 border-rose-500">
                     <div class="flex justify-between items-center mb-4">
                         <div>
-                            <h3 class="text-sm font-bold text-slate-200 uppercase">Attention Needed</h3>
-                            <p class="text-[10px] text-slate-500 mt-1">Based on Forgetting Curve decay</p>
+                            <h3 class="text-sm font-bold opacity-80 uppercase">Attention Needed</h3>
+                            <p class="text-[10px] opacity-50 mt-1">Based on Forgetting Curve decay</p>
                         </div>
                         <div class="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-500 animate-pulse">
                             <i class="fa-solid fa-triangle-exclamation"></i>
@@ -221,12 +225,12 @@ export const UIStats = {
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="glass-panel p-4 rounded-xl flex flex-col items-center justify-center text-center">
-                        <span class="text-[10px] text-slate-500 uppercase font-bold">Total Qs</span>
-                        <span class="text-2xl font-black text-white mt-1">${AcademicEngine.getTotalQuestionsAnswered()}</span>
+                    <div class="premium-panel p-4 rounded-xl flex flex-col items-center justify-center text-center">
+                        <span class="text-[10px] opacity-50 uppercase font-bold">Total Qs</span>
+                        <span class="text-2xl font-black mt-1">${AcademicEngine.getTotalQuestionsAnswered()}</span>
                     </div>
-                    <div class="glass-panel p-4 rounded-xl flex flex-col items-center justify-center text-center">
-                        <span class="text-[10px] text-slate-500 uppercase font-bold">Accuracy</span>
+                    <div class="premium-panel p-4 rounded-xl flex flex-col items-center justify-center text-center">
+                        <span class="text-[10px] opacity-50 uppercase font-bold">Accuracy</span>
                         <span class="text-2xl font-black text-emerald-400 mt-1">${AcademicEngine.getGlobalAccuracy()}%</span>
                     </div>
                 </div>
@@ -310,7 +314,7 @@ export const UIStats = {
             .slice(0, 3); // Top 3 worst
 
         if (sorted.length === 0) {
-            container.innerHTML = `<div class="text-xs text-slate-500 italic text-center py-2">No data yet. Start studying!</div>`;
+            container.innerHTML = `<div class="text-xs opacity-50 italic text-center py-2">No data yet. Start studying!</div>`;
             return;
         }
 
@@ -322,14 +326,14 @@ export const UIStats = {
             <div class="flex items-center gap-3">
                 <div class="flex-1">
                     <div class="flex justify-between mb-1">
-                        <span class="text-xs font-bold text-slate-300">${name}</span>
+                        <span class="text-xs font-bold opacity-80">${name}</span>
                         <span class="text-[10px] font-mono text-rose-400">${score}% Mastery</span>
                     </div>
-                    <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                    <div class="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                         <div class="h-full bg-rose-500 rounded-full" style="width: ${score}%"></div>
                     </div>
                 </div>
-                <button onclick="Main.navigate('quiz', {subject: '${key}'})" class="w-8 h-8 rounded-lg bg-slate-800 border border-white/5 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors">
+                <button onclick="Main.navigate('quiz', {subject: '${key}'})" class="w-8 h-8 rounded-lg bg-white/5 border border-white/5 opacity-60 hover:opacity-100 hover:bg-white/10 flex items-center justify-center transition-all">
                     <i class="fa-solid fa-play text-xs"></i>
                 </button>
             </div>
@@ -355,12 +359,13 @@ export const UIStats = {
         ];
 
         // 2. Inject Layout
+        // REFACTOR: Replaced glass-card/glass-panel with premium-card/premium-panel
         parent.innerHTML = `
-            <div class="glass-card p-4 mb-6">
+            <div class="premium-card p-4 mb-6">
                 <div class="flex justify-between items-center mb-4 px-2">
                     <div>
-                        <h3 class="text-sm font-bold text-white uppercase tracking-wider">Cognitive Profile</h3>
-                        <p class="text-[10px] text-slate-500">Your psychological archetype</p>
+                        <h3 class="text-sm font-bold uppercase tracking-wider">Cognitive Profile</h3>
+                        <p class="text-[10px] opacity-50">Your psychological archetype</p>
                     </div>
                     <i class="fa-solid fa-brain text-purple-400"></i>
                 </div>
@@ -371,33 +376,33 @@ export const UIStats = {
             </div>
 
             <div class="grid grid-cols-2 gap-4 mb-6">
-                <div class="glass-panel p-4 rounded-xl relative overflow-hidden">
+                <div class="premium-panel p-4 rounded-xl relative overflow-hidden">
                     <div class="relative z-10">
-                        <span class="text-[10px] text-slate-400 font-bold uppercase">Impulsivity</span>
+                        <span class="text-[10px] opacity-50 font-bold uppercase">Impulsivity</span>
                         <div class="flex items-end gap-2 mt-1">
-                            <span class="text-2xl font-black text-white">${Math.round((1 - (p.calm?.value || 0.5)) * 100)}%</span>
-                            <span class="text-[10px] text-slate-500 mb-1">Risk Factor</span>
+                            <span class="text-2xl font-black">${Math.round((1 - (p.calm?.value || 0.5)) * 100)}%</span>
+                            <span class="text-[10px] opacity-50 mb-1">Risk Factor</span>
                         </div>
                     </div>
-                    <i class="fa-solid fa-bolt absolute -bottom-2 -right-2 text-6xl text-slate-800/50"></i>
+                    <i class="fa-solid fa-bolt absolute -bottom-2 -right-2 text-6xl opacity-10"></i>
                 </div>
 
-                <div class="glass-panel p-4 rounded-xl relative overflow-hidden">
+                <div class="premium-panel p-4 rounded-xl relative overflow-hidden">
                     <div class="relative z-10">
-                        <span class="text-[10px] text-slate-400 font-bold uppercase">Stamina</span>
+                        <span class="text-[10px] opacity-50 font-bold uppercase">Stamina</span>
                         <div class="flex items-end gap-2 mt-1">
-                            <span class="text-2xl font-black text-white">${Math.round((p.endurance?.value || 0.5) * 100)}%</span>
-                            <span class="text-[10px] text-slate-500 mb-1">Battery</span>
+                            <span class="text-2xl font-black">${Math.round((p.endurance?.value || 0.5) * 100)}%</span>
+                            <span class="text-[10px] opacity-50 mb-1">Battery</span>
                         </div>
                     </div>
-                    <i class="fa-solid fa-battery-full absolute -bottom-2 -right-2 text-6xl text-slate-800/50"></i>
+                    <i class="fa-solid fa-battery-full absolute -bottom-2 -right-2 text-6xl opacity-10"></i>
                 </div>
             </div>
 
-            <div class="glass-card p-4">
+            <div class="premium-card p-4">
                 <div class="mb-4">
-                    <h3 class="text-xs font-bold text-slate-300 uppercase">Focus Retention</h3>
-                    <p class="text-[10px] text-slate-500">Accuracy drop-off over quiz duration</p>
+                    <h3 class="text-xs font-bold uppercase">Focus Retention</h3>
+                    <p class="text-[10px] opacity-50">Accuracy drop-off over quiz duration</p>
                 </div>
                 <div class="h-[150px] w-full">
                     <canvas id="chart-stamina"></canvas>
@@ -503,12 +508,13 @@ export const UIStats = {
 
     _renderTimeline(parent) {
         // 1. Inject Layout
+        // REFACTOR: Replaced glass-card/glass-panel with premium-card/premium-panel
         parent.innerHTML = `
-            <div class="glass-card p-4 mb-6">
+            <div class="premium-card p-4 mb-6">
                 <div class="flex justify-between items-center mb-4 px-2">
                     <div>
-                        <h3 class="text-sm font-bold text-white uppercase tracking-wider">The Ascent</h3>
-                        <p class="text-[10px] text-slate-500">Score progression over last 30 days</p>
+                        <h3 class="text-sm font-bold uppercase tracking-wider">The Ascent</h3>
+                        <p class="text-[10px] opacity-50">Score progression over last 30 days</p>
                     </div>
                     <i class="fa-solid fa-arrow-trend-up text-emerald-400"></i>
                 </div>
@@ -518,19 +524,19 @@ export const UIStats = {
                 </div>
             </div>
 
-            <div class="glass-panel p-5 rounded-2xl mb-6">
+            <div class="premium-panel p-5 rounded-2xl mb-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xs font-bold text-slate-300 uppercase">Consistency Streak</h3>
-                    <span class="text-[10px] font-mono text-slate-500">Last 28 Days</span>
+                    <h3 class="text-xs font-bold opacity-80 uppercase">Consistency Streak</h3>
+                    <span class="text-[10px] font-mono opacity-50">Last 28 Days</span>
                 </div>
                 
                 <div id="heatmap-grid" class="grid grid-cols-7 gap-2">
                     </div>
 
-                <div class="flex justify-between items-center mt-4 text-[10px] text-slate-500 font-bold uppercase">
+                <div class="flex justify-between items-center mt-4 text-[10px] opacity-50 font-bold uppercase">
                     <span>Less</span>
                     <div class="flex gap-1">
-                        <div class="w-3 h-3 rounded bg-slate-800"></div>
+                        <div class="w-3 h-3 rounded bg-white/5"></div>
                         <div class="w-3 h-3 rounded bg-blue-900"></div>
                         <div class="w-3 h-3 rounded bg-blue-600"></div>
                         <div class="w-3 h-3 rounded bg-blue-400"></div>
@@ -603,7 +609,7 @@ export const UIStats = {
         for (let i = 0; i < 28; i++) {
             const activityLevel = Math.floor(Math.random() * 4); // 0 to 3
             
-            let colorClass = 'bg-slate-800 border-slate-700'; // Default empty
+            let colorClass = 'bg-white/5 border-white/5'; // Default empty
             if (activityLevel === 1) colorClass = 'bg-blue-900 border-blue-800'; // Low
             if (activityLevel === 2) colorClass = 'bg-blue-600 border-blue-500 shadow-[0_0_5px_rgba(37,99,235,0.5)]'; // Med
             if (activityLevel === 3) colorClass = 'bg-blue-400 border-blue-300 shadow-[0_0_10px_rgba(96,165,250,0.8)]'; // High
@@ -617,3 +623,5 @@ export const UIStats = {
 
 // Global Exposure
 window.UIStats = UIStats;
+
+
