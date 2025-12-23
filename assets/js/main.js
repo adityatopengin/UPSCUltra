@@ -1,60 +1,64 @@
 /**
- * MAIN.JS (DEBUG MODE - LEVEL 0)
- * Only DB and Config are active.
+ * MAIN.JS (DEBUG MODE - PHASE 1: LOGIC LAYER)
+ * DB + Config + Logic Engines are active.
+ * UI is still disabled.
  */
 
 import { DB } from './services/db.js';
 import { CONFIG } from './config.js';
 
-// 🔴 COMMENTED OUT TO ISOLATE ERRORS
+// ✅ UNCOMMENTING "THE BRAIN"
+import { MasterAggregator } from './services/master-aggregator.js';
+import { Engine } from './engine/quiz-engine.js';
+
+// 🔴 UI STILL DISABLED
 // import { DataSeeder } from './services/data-seeder.js'; 
-// import { MasterAggregator } from './services/master-aggregator.js';
-// import { Engine } from './engine/quiz-engine.js';
 
 export const Main = {
     state: {
-        currentView: 'home'
+        currentView: 'home',
+        isQuizActive: false
     },
 
     async init() {
-        console.log(`🚀 DEBUG MODE: Booting Core...`);
+        console.log(`🚀 PHASE 1: Testing Logic Layer...`);
 
         try {
             // 1. Initialize Database
             await DB.connect();
             console.log("✅ Database Connected");
 
-            // 2. Initialize UI Shell (If available global)
-            if (window.UI) {
-                window.UI.init();
-                console.log("✅ UI Shell Initialized");
+            // 2. Initialize Master Aggregator (The Manager)
+            if (MasterAggregator) {
+                MasterAggregator.init();
+                console.log("✅ MasterAggregator Started");
             }
 
-            // 3. Remove Loader manually for test
+            // 3. Initialize Engine (The Logic)
+            if (Engine) {
+                console.log("✅ Quiz Engine Loaded");
+            }
+
+            // 4. Initialize UI Shell (If available global)
+            if (window.UI) {
+                window.UI.init();
+            }
+
+            // Remove Loader manually
             const loader = document.getElementById('boot-loader');
             if (loader) loader.style.display = 'none';
 
-            console.log("✅ System Online (Skeleton Only).");
+            console.log("✅ PHASE 1 SUCCESS: Logic Layer is clean.");
 
         } catch (e) {
-            console.error("CRITICAL: Boot Failed", e);
+            console.error("CRITICAL: Logic Layer Failed", e);
         }
     },
 
-    // Empty Router for now
-    navigate(viewName) {
-        console.log(`Maps called for: ${viewName} (Disabled in Debug Mode)`);
-    },
-    
     // Empty Router
-    _initRouter() {
-        console.log("Router disabled");
-    },
-    
-    // Empty Handler
-    async _handleRoute() {
-        console.log("Route handler disabled");
-    }
+    navigate(viewName) { console.log("Nav disabled"); },
+    _initRouter() { console.log("Router disabled"); },
+    async _handleRoute() { console.log("Route handler disabled"); }
 };
 
 window.Main = Main;
