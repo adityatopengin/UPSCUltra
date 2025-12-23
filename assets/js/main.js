@@ -1,7 +1,10 @@
 /**
- * MAIN.JS (FINAL PRODUCTION)
- * Version: 4.0.0
- * Status: All Systems Go
+ * MAIN.JS (FINAL PRODUCTION ROUTER)
+ * Version: 3.3.0
+ * Responsibilities:
+ * 1. App Boot Sequence (DB -> UI -> Logic).
+ * 2. Routing (Home, Quiz, Results, Review, Settings, Stats, Arcade).
+ * 3. Global State Management.
  */
 
 import { DB } from './services/db.js';
@@ -10,14 +13,14 @@ import { MasterAggregator } from './services/master-aggregator.js';
 import { Engine } from './engine/quiz-engine.js';
 import { UI } from './ui/ui-manager.js'; 
 
-// View Imports
+// ✅ CORE VIEWS (Loaded Immediately for Speed)
 import { UIHome } from './ui/views/ui-home.js';
 import { UIQuiz } from './ui/views/ui-quiz.js';
 import { UIResults } from './ui/views/ui-results.js';
-import { UIReview } from './ui/views/ui-review.js';
-import { UISettings } from './ui/views/ui-settings.js';
-import { UIArcade } from './ui/views/ui-arcade.js';
-import { UIStats } from './ui/views/ui-stats.js';
+import { UIReview } from './ui/views/ui-review.js'; 
+
+// ⏳ OPTIONAL VIEWS (Lazy Loaded to prevent Boot Crashes)
+let UISettings, UIStats, UIArcade;
 
 export const Main = {
     // ============================================================
@@ -38,20 +41,21 @@ export const Main = {
         console.log(`🚀 SYSTEM LAUNCH: v${CONFIG.version}`);
 
         try {
-            // 1. Database & UI Shell
+            // 1. Connect Database
             await DB.connect();
+            
+            // 2. Initialize UI Shell
             if (window.UI) await window.UI.init();
 
-            // 2. Logic Engines
+            // 3. Initialize Logic Engine
             if (MasterAggregator) MasterAggregator.init();
 
-            // 3. Router
+            // 4. Start Router
             this._initRouter();
 
-            // 4. Initial Render
-            // Short delay to ensure DOM is ready
+            // 5. Initial Render
+            // Short delay ensures DOM is fully painted
             setTimeout(() => {
-                // If the URL has a hash (e.g. #quiz), go there. Otherwise Home.
                 const hash = window.location.hash;
                 if (!hash || hash === '#') {
                     this.navigate('home');
@@ -61,18 +65,15 @@ export const Main = {
                 
                 // Hide Boot Loader
                 if (window.UI) UI.toggleLoader(false);
-                
-                // Remove Debugger if it exists
-                const dbg = document.getElementById('debug-box');
-                if (dbg) dbg.remove();
-
             }, 500);
 
             console.log("✅ ALL SYSTEMS ONLINE.");
 
         } catch (e) {
             console.error("CRITICAL: Boot Failed", e);
-            alert("App Start Failed: " + e.message);
+            // Emergency Alert
+            const loader = document.getElementById('boot-loader');
+            if(loader) loader.innerHTML = `<div class="text-red-500 p-8 text-center font-bold">BOOT FAILURE<br><span class="text-xs text-gray-400">${e.message}</span></div>`;
         }
     },
 
@@ -81,7 +82,7 @@ export const Main = {
     // ============================================================
     
     navigate(viewName, params = null) {
-        // Safety: Prevent accidental exit during quiz
+        // Safety: Prevent accidental exit during active quiz
         if (this.state.isQuizActive && viewName !== 'quiz') {
             if (!confirm("⚠️ End Quiz? Progress will be lost.")) return;
             this.endQuizSession();
@@ -89,12 +90,13 @@ export const Main = {
 
         this.state.currentView = viewName;
         
+        // Handle Parameters
         if (params) {
             if (params.subjectId) this.state.activeSubject = params.subjectId;
             if (params.id) this.state.lastResultId = params.id;
         }
 
-        // Update URL
+        // Update URL & Trigger Route Handler
         if (viewName === 'quiz') {
             history.replaceState(null, null, `#${viewName}`);
             this._handleRoute(); 
@@ -111,10 +113,10 @@ export const Main = {
         const hash = window.location.hash.replace('#', '') || 'home';
         const container = document.getElementById('app-container');
         
-        // Scroll to top
+        // Scroll to top on navigation
         window.scrollTo(0, 0);
 
-        // ROUTING TABLE
+        // --- ROUTING TABLE ---
         switch (hash.split('?')[0]) {
             case 'home':
                 if (window.UIHome) await UIHome.render(container);
@@ -132,28 +134,63 @@ export const Main = {
                 if (window.UIReview) await UIReview.render(container);
                 break;
 
+            // --- LAZY LOADED ROUTES ---
             case 'settings':
-                if (window.UISettings) UISettings.render(container);
-                break;
-
-            case 'arcade':
-                if (window.UIArcade) UIArcade.render(container);
+                await this._loadAndRender('settings', './ui/views/ui-settings.js', container);
                 break;
 
             case 'stats':
-                if (window.UIStats) await UIStats.render(container);
+                await this._loadAndRender('stats', './ui/views/ui-stats.js', container);
+                break;
+
+            case 'arcade':
+                await this._loadAndRender('arcade', './ui/views/ui-arcade.js', container);
                 break;
                 
             default:
+                console.warn(`Router: Unknown view ${hash}, redirecting Home.`);
                 this.navigate('home');
         }
         
-        // Update Bottom Dock
+        // Update Bottom Navigation Dock
         if (window.UIHeader) UIHeader.updateActiveTab(hash);
     },
 
+    /**
+     * Helper to load modules on demand
+     */
+    async _loadAndRender(moduleName, path, container) {
+        try {
+            if (moduleName === 'settings') {
+                if (!UISettings) {
+                    const mod = await import(path);
+                    UISettings = mod.UISettings;
+                }
+                UISettings.render(container);
+            } 
+            else if (moduleName === 'stats') {
+                if (!UIStats) {
+                    const mod = await import(path);
+                    UIStats = mod.UIStats;
+                }
+                UIStats.render(container);
+            }
+            else if (moduleName === 'arcade') {
+                if (!UIArcade) {
+                    const mod = await import(path);
+                    UIArcade = mod.UIArcade;
+                }
+                UIArcade.render(container);
+            }
+        } catch (e) {
+            console.error(`Failed to load ${moduleName}:`, e);
+            UI.showToast(`Error loading ${moduleName}`, 'error');
+            this.navigate('home');
+        }
+    },
+
     // ============================================================
-    // 4. ACTIONS
+    // 4. ACTIONS & HANDLERS
     // ============================================================
 
     // --- QUIZ ---
@@ -164,16 +201,25 @@ export const Main = {
 
     async startQuizSession(subjectId) {
         if (window.UI) UI.toggleLoader(true);
-        await Engine.startSession(subjectId); 
-        this.state.isQuizActive = true;
-        this.navigate('quiz');
-        if (window.UI) UI.toggleLoader(false);
+        try {
+            await Engine.startSession(subjectId); 
+            this.state.isQuizActive = true;
+            this.navigate('quiz');
+        } catch(e) {
+            console.error("Quiz Start Failed", e);
+            UI.showToast("Could not start quiz", 'error');
+        } finally {
+            if (window.UI) UI.toggleLoader(false);
+        }
     },
 
     handleQuizCompletion(resultData) {
+        console.log("Main: Quiz Completed.", resultData);
+        // Store in memory for instant access by UIResults
         this.state.lastResult = resultData;
         this.state.lastResultId = resultData.id;
         this.state.isQuizActive = false;
+        
         this.navigate('results', { id: resultData.id });
     },
 
@@ -189,14 +235,16 @@ export const Main = {
     },
 
     toggleTheme() {
-        const isDark = document.documentElement.classList.toggle('dark');
+        document.documentElement.classList.toggle('dark');
+        const isDark = document.documentElement.classList.contains('dark');
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        if(window.UI) UI.showToast(isDark ? "Dark Mode Active" : "Light Mode Active");
     }
 };
 
+// Global Export
 window.Main = Main;
 
+// Boot
 document.addEventListener('DOMContentLoaded', () => {
     Main.init();
 });
