@@ -461,4 +461,39 @@ export const AcademicEngine = {
             };
         });
     }
+        // ============================================================
+    // 8. MISSING UI HELPERS (Fixes TypeError)
+    // ============================================================
+
+    /**
+     * Returns the average mastery score across all subjects (0-100).
+     * Used by UIStats for "Rank" calculation.
+     */
+    getGlobalMastery() {
+        const subjects = Object.values(this.state.mastery);
+        if (subjects.length === 0) return 0;
+        
+        const total = subjects.reduce((sum, sub) => sum + (sub.score || 0), 0);
+        return Math.round(total / subjects.length);
+    },
+
+    /**
+     * Returns total questions attempted across all subjects.
+     * Used by UIStats Overview.
+     */
+    getTotalQuestionsAnswered() {
+        return Object.values(this.state.mastery).reduce((sum, sub) => {
+            return sum + (sub.attemptsL1 || 0) + (sub.attemptsL3 || 0);
+        }, 0);
+    },
+
+    /**
+     * Returns global accuracy percentage.
+     * Note: Since AcademicEngine tracks Weighted Mastery, we use Global Mastery
+     * as a proxy for accuracy in this version.
+     */
+    getGlobalAccuracy() {
+        return this.getGlobalMastery();
+    }
+
 };
