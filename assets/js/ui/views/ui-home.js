@@ -16,7 +16,8 @@ export const UIHome = {
     async render(container) {
         // A. Clear Container & Set Layout
         container.innerHTML = '';
-        container.className = 'view-container pb-24'; 
+        // REFACTOR: Increased padding to pb-40
+        container.className = 'view-container pb-40'; 
 
         // B. Update Header State
         if (window.UI && window.UIHeader) {
@@ -26,6 +27,7 @@ export const UIHome = {
 
         // C. Render The Oracle HUD
         const oracleSection = document.createElement('div');
+        // REFACTOR: Kept premium-card, removed hardcoded bg colors if any
         oracleSection.className = 'oracle-container premium-card mb-6 p-6 relative overflow-hidden rounded-[32px] min-h-[220px] animate-fade-in';
         oracleSection.innerHTML = this._getOracleSkeleton();
         container.appendChild(oracleSection);
@@ -45,17 +47,20 @@ export const UIHome = {
     // ============================================================
 
     _getOracleSkeleton() {
+        // REFACTOR: Replaced specific bg colors with opacity classes where possible,
+        // though gradient blobs are often needed for "vibe". Kept them as is for visual flair
+        // but removed text-slate-*
         return `
             <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
             <div class="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
             <div class="flex justify-between items-start relative z-10 mb-4">
                 <div>
-                    <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Oracle Prediction</h2>
-                    <h3 id="prob-text" class="text-lg font-black text-slate-200 mt-1 animate-pulse">ANALYZING DATA...</h3>
+                    <h2 class="text-[10px] font-black opacity-60 uppercase tracking-[0.2em]">Oracle Prediction</h2>
+                    <h3 id="prob-text" class="premium-text-head text-lg font-black mt-1 animate-pulse">ANALYZING DATA...</h3>
                 </div>
-                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center">
-                    <i class="fa-solid fa-brain text-slate-500 text-xs"></i>
+                <div class="w-8 h-8 rounded-full premium-panel flex items-center justify-center opacity-80">
+                    <i class="fa-solid fa-brain text-xs"></i>
                 </div>
             </div>
 
@@ -65,19 +70,19 @@ export const UIHome = {
 
             <div class="relative z-10 mt-8 flex justify-between items-end">
                 <div>
-                    <div class="text-[9px] font-bold text-slate-500 uppercase mb-1">Projected Score</div>
+                    <div class="text-[9px] font-bold opacity-50 uppercase mb-1">Projected Score</div>
                     <div class="flex items-baseline gap-2">
-                        <span id="main-score" class="text-4xl font-black text-white tracking-tighter">--</span>
-                        <span class="text-xs text-slate-500 font-bold">/ 200</span>
+                        <span id="main-score" class="text-4xl font-black tracking-tighter">--</span>
+                        <span class="text-xs opacity-50 font-bold">/ 200</span>
                     </div>
                 </div>
                 
                 <div class="text-right space-y-1">
-                    <div class="flex items-center justify-end gap-2 text-[9px] text-slate-400 font-bold">
-                        <span>MIN</span> <span id="min-score" class="text-slate-200">--</span>
+                    <div class="flex items-center justify-end gap-2 text-[9px] opacity-40 font-bold">
+                        <span>MIN</span> <span id="min-score" class="opacity-80">--</span>
                     </div>
-                    <div class="flex items-center justify-end gap-2 text-[9px] text-slate-400 font-bold">
-                        <span>MAX</span> <span id="max-score" class="text-slate-200">--</span>
+                    <div class="flex items-center justify-end gap-2 text-[9px] opacity-40 font-bold">
+                        <span>MAX</span> <span id="max-score" class="opacity-80">--</span>
                     </div>
                 </div>
             </div>
@@ -85,7 +90,7 @@ export const UIHome = {
             <div id="warning-container" class="relative z-10 mt-4 flex gap-2 overflow-x-auto no-scrollbar">
             </div>
         `;
-    }, // <--- THIS COMMA IS CRITICAL
+    }, 
 
     async _initOracle(containerElement) {
         if (window.UIOracle) {
@@ -108,7 +113,7 @@ export const UIHome = {
                 probText.classList.add('text-rose-500');
             }
         }
-    }, // <--- THIS COMMA IS CRITICAL
+    }, 
 
     // ============================================================
     // 3. RESUME CARD
@@ -134,6 +139,7 @@ export const UIHome = {
             }
 
             const card = document.createElement('div');
+            // REFACTOR: Replaced premium-card logic manually to ensure consistency
             card.innerHTML = `
             <div onclick="if(window.Main) Main.showResult('${lastResult.id}')" 
                  class="premium-card p-5 rounded-[28px] mb-8 flex items-center justify-between cursor-pointer active:scale-95 transition-transform animate-slide-up select-none ring-1 ring-white/10 hover:ring-white/20">
@@ -144,14 +150,14 @@ export const UIHome = {
                     </div>
                     
                     <div>
-                        <h3 class="text-xs font-black text-slate-700 dark:text-slate-200">RESUME LEARNING</h3>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">
+                        <h3 class="text-xs font-black premium-text-head">RESUME LEARNING</h3>
+                        <p class="text-[10px] font-bold opacity-60 uppercase tracking-wide mt-0.5">
                             ${subjectConfig.name} &bull; ${lastResult.score.toFixed(0)} Marks
                         </p>
                     </div>
                 </div>
 
-                <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400">
+                <div class="w-8 h-8 rounded-full premium-panel flex items-center justify-center opacity-50">
                     <i class="fa-solid fa-chevron-right text-xs"></i>
                 </div>
             </div>`;
@@ -161,7 +167,7 @@ export const UIHome = {
         } catch (e) {
             console.warn("UIHome: Failed to render resume card", e);
         }
-    }, // <--- THIS COMMA IS CRITICAL
+    }, 
 
     // ============================================================
     // 4. SUBJECT GRID
@@ -170,7 +176,7 @@ export const UIHome = {
     async _renderSubjectGrid(container) {
         // Section Title: GS1
         const title = document.createElement('h2');
-        title.className = "text-xs font-black text-slate-400 uppercase tracking-widest mb-4 pl-2";
+        title.className = "text-xs font-black opacity-50 uppercase tracking-widest mb-4 pl-2";
         title.textContent = "General Studies (Paper 1)";
         container.appendChild(title);
 
@@ -188,7 +194,7 @@ export const UIHome = {
 
         // Section Title: CSAT
         const titleCsat = document.createElement('h2');
-        titleCsat.className = "text-xs font-black text-slate-400 uppercase tracking-widest mb-4 pl-2";
+        titleCsat.className = "text-xs font-black opacity-50 uppercase tracking-widest mb-4 pl-2";
         titleCsat.textContent = "CSAT (Paper 2)";
         container.appendChild(titleCsat);
 
@@ -203,7 +209,7 @@ export const UIHome = {
             });
         }
         container.appendChild(gridCsat);
-    }, // <--- THIS COMMA IS CRITICAL
+    }, 
 
     // ============================================================
     // 5. HELPER: TILE GENERATOR
@@ -213,6 +219,7 @@ export const UIHome = {
         const div = document.createElement('div');
         const delay = index * 50; 
         
+        // REFACTOR: Replaced manual border/bg logic with premium-card
         div.className = `premium-card p-4 rounded-[24px] flex flex-col justify-between h-32 active:scale-95 transition-transform animate-view-enter relative overflow-hidden group cursor-pointer border border-white/5 hover:border-${sub.color}-500/30`;
         div.style.animationDelay = `${delay}ms`;
         
@@ -232,8 +239,8 @@ export const UIHome = {
             </div>
             
             <div class="z-10">
-                <h3 class="text-sm font-black text-slate-700 dark:text-slate-200 leading-tight">${sub.name}</h3>
-                <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 group-hover:text-${sub.color}-400 transition-colors">Start Mock</p>
+                <h3 class="text-sm font-black premium-text-head leading-tight">${sub.name}</h3>
+                <p class="text-[9px] font-bold opacity-50 uppercase mt-1 group-hover:text-${sub.color}-400 transition-colors">Start Mock</p>
             </div>
         `;
         
@@ -242,4 +249,5 @@ export const UIHome = {
 };
 
 window.UIHome = UIHome;
+
 
