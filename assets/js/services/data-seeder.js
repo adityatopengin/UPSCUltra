@@ -1,11 +1,12 @@
 /**
  * DATA SEEDER (THE GENESIS)
- * Version: 2.0.0
+ * Version: 2.1.0 (Hybrid: JSON-First with Generator Fallback)
  * Path: assets/js/services/data-seeder.js
  * Responsibilities:
  * 1. Checks if the App Database is empty on boot.
- * 2. Generates a robust Mock Question Bank (500+ Qs) internally.
- * 3. Populates IndexedDB so the App works offline immediately.
+ * 2. Tries to load real questions from 'assets/data/*.json'.
+ * 3. Falls back to internal Mock Generator if files are missing.
+ * 4. Populates IndexedDB.
  */
 
 import { DB } from './db.js';
@@ -39,8 +40,6 @@ export const DataSeeder = {
             }
         } catch (e) {
             console.error("🌱 DataSeeder: Critical Failure", e);
-            // We resolve anyway to let the app try to boot, 
-            // but the user might see empty screens.
         }
     },
 
@@ -48,7 +47,7 @@ export const DataSeeder = {
      * Verify if the 'questions' store has any data.
      */
     async _checkIfEmpty() {
-        // We assume if there are < 10 questions, it's effectively empty/broken.
+        // We assume if there are < 5 questions, it's effectively empty/broken.
         const keys = await DB.getRandomKeys('questions', null, null, 10);
         return keys.length < 5;
     },
@@ -59,9 +58,13 @@ export const DataSeeder = {
     async seed() {
         const startTime = Date.now();
         
-        // 1. Generate Questions for all subjects
-        // We generate ~50 questions per subject for the MVP (approx 500 total)
-        const allQuestions = this._generateMasterDataset();
+        // 1. Gather Data (Try JSON -> Fallback to Mock)
+        const allQuestions = await this._gatherAllData();
+
+        if (allQuestions.length === 0) {
+            console.warn("🌱 DataSeeder: No questions generated! Check configuration.");
+            return;
+        }
 
         // 2. Bulk Insert into DB
         // DB.bulkPut is optimized for single-transaction writes
@@ -73,38 +76,71 @@ export const DataSeeder = {
     },
 
     // ============================================================
-    // 2. MOCK DATA GENERATOR (THE FACTORY)
+    // 2. DATA GATHERING (THE HYBRID ENGINE)
     // ============================================================
 
-    _generateMasterDataset() {
-        let dataset = [];
+    async _gatherAllData() {
+        let masterDataset = [];
         
         // Combine GS and CSAT subjects
         const allSubjects = [...CONFIG.subjectsGS1, ...CONFIG.subjectsCSAT];
 
-        allSubjects.forEach(sub => {
-            // Generate 50 questions per subject
-            const subjectQuestions = Array.from({ length: 50 }, (_, i) => 
-                this._createMockQuestion(sub.id, sub.name, i)
-            );
-            dataset = dataset.concat(subjectQuestions);
-        });
+        // Process subjects sequentially to manage resources
+        for (const sub of allSubjects) {
+            let subjectQs = [];
 
-        return dataset;
+            try {
+                // A. TRY EXTERNAL JSON
+                // We attempt to fetch a file named exactly like the ID (e.g., 'polity.json')
+                const response = await fetch(`assets/data/${sub.id}.json`);
+                
+                if (response.ok) {
+                    const jsonData = await response.json();
+                    if (Array.isArray(jsonData) && jsonData.length > 0) {
+                        console.log(`🌱 DataSeeder: Loaded ${jsonData.length} Qs from ${sub.id}.json`);
+                        // Normalize data to ensure it has required fields
+                        subjectQs = jsonData.map((q, idx) => ({
+                            ...q,
+                            id: q.id || `json_${sub.id}_${idx}`,
+                            subject: sub.id, // Enforce correct subject ID
+                            random: Math.random() // Ensure random index exists
+                        }));
+                    } else {
+                        throw new Error("Empty or invalid JSON");
+                    }
+                } else {
+                    throw new Error(`File not found (Status: ${response.status})`);
+                }
+
+            } catch (e) {
+                // B. FALLBACK TO GENERATOR
+                // If 404 or bad JSON, we quietly switch to internal logic
+                // console.warn(`🌱 DataSeeder: Could not load ${sub.id}.json (${e.message}). Using Mock Generator.`);
+                subjectQs = this._generateMockQuestionsForSubject(sub.id, sub.name);
+            }
+
+            masterDataset = masterDataset.concat(subjectQs);
+        }
+
+        return masterDataset;
     },
+
     // ============================================================
-    // 3. THE QUESTION FACTORY (PROCEDURAL GENERATION)
+    // 3. MOCK GENERATOR (THE FALLBACK FACTORY)
     // ============================================================
+
+    _generateMockQuestionsForSubject(subjectId, subjectName) {
+        // Generate 50 questions per subject for the MVP
+        return Array.from({ length: 50 }, (_, i) => 
+            this._createMockQuestion(subjectId, subjectName, i)
+        );
+    },
 
     /**
      * Creates a single question object with realistic metadata.
-     * @param {string} subjectId - e.g. 'polity'
-     * @param {string} subjectName - e.g. 'Indian Polity'
-     * @param {number} index - 0 to 49
      */
     _createMockQuestion(subjectId, subjectName, index) {
         // 1. Determine Difficulty based on index
-        // First 10 = Easy (L1), Next 20 = Medium (L2), Last 20 = Hard (L3)
         let level = 'L2';
         if (index < 10) level = 'L1';
         else if (index >= 30) level = 'L3';
@@ -113,7 +149,6 @@ export const DataSeeder = {
         const topic = this._getTopicForSubject(subjectId, index);
 
         // 3. Generate Text Templates
-        // We make them look like real UPSC questions
         const qText = this._generateQuestionText(subjectId, topic, level, index);
         
         return {
@@ -127,8 +162,8 @@ export const DataSeeder = {
             explanation: qText.explanation,
             
             // Metadata for indexing
-            random: Math.random(), // For fast random fetching
-            source: 'Gyan Amala Core'
+            random: Math.random(), 
+            source: 'Gyan Amala Core (Mock)'
         };
     },
 
@@ -149,14 +184,11 @@ export const DataSeeder = {
         };
 
         const list = topics[subId] || ['General'];
-        // Cycle through topics
         return list[index % list.length];
     },
 
     /**
      * Generates realistic text string.
-     * In a real app, this would come from a server/JSON.
-     * Here, we simulate it for the "Local-First" demo.
      */
     _generateQuestionText(subId, topic, level, index) {
         // Base Template
@@ -199,3 +231,4 @@ export const DataSeeder = {
 
 // Global Exposure (Allows Main.js to call DataSeeder.init())
 window.DataSeeder = DataSeeder;
+
