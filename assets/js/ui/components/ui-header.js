@@ -1,11 +1,11 @@
 /**
  * UI-HEADER (THE NAVIGATOR)
- * Version: 2.1.0 (Restored & Enhanced)
+ * Version: 2.2.0 (Settings Button Fixed)
  * Path: assets/js/ui/components/ui-header.js
  * Responsibilities:
  * 1. Renders the persistent Bottom Navigation Dock.
  * 2. Manages the "Active Tab" state (highlighting the current view).
- * 3. Hides automatically during Quizzes.
+ * 3. Hides automatically during Quizzes to prevent distraction.
  */
 
 export const UIHeader = {
@@ -54,8 +54,8 @@ export const UIHeader = {
                 <span class="absolute -bottom-1 w-1 h-1 rounded-full bg-emerald-400 opacity-0 transition-all group-[.active]:opacity-100"></span>
             </button>
 
-            <button onclick="Main.toggleTheme()" data-tab="settings" class="nav-btn w-12 h-12 rounded-xl flex items-center justify-center text-slate-500 hover:bg-white/5 active:scale-95 transition-all relative group">
-                <i class="fa-solid fa-circle-half-stroke text-xl transition-colors group-[.active]:text-amber-400"></i>
+            <button onclick="Main.navigate('settings')" data-tab="settings" class="nav-btn w-12 h-12 rounded-xl flex items-center justify-center text-slate-500 hover:bg-white/5 active:scale-95 transition-all relative group">
+                <i class="fa-solid fa-sliders text-xl transition-colors group-[.active]:text-amber-400"></i>
                 <span class="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-400 opacity-0 transition-all group-[.active]:opacity-100"></span>
             </button>
 
@@ -83,8 +83,6 @@ export const UIHeader = {
         const buttons = nav.querySelectorAll('.nav-btn');
         buttons.forEach(btn => {
             btn.classList.remove('active');
-            // Remove Tailwind specific active classes if manual manipulation is needed
-            // But the CSS group-[.active] handles it automatically based on class 'active'
         });
 
         // 2. Logic: Should we hide the dock?
