@@ -1,11 +1,11 @@
 /**
  * UI-HEADER (THE NAVIGATOR)
- * Version: 2.0.0
+ * Version: 2.1.0 (Restored & Enhanced)
  * Path: assets/js/ui/components/ui-header.js
  * Responsibilities:
  * 1. Renders the persistent Bottom Navigation Dock.
  * 2. Manages the "Active Tab" state (highlighting the current view).
- * 3. Handles top-level navigation actions.
+ * 3. Hides automatically during Quizzes.
  */
 
 export const UIHeader = {
@@ -21,7 +21,8 @@ export const UIHeader = {
         if (!document.getElementById('main-nav')) {
             const nav = document.createElement('nav');
             nav.id = 'main-nav';
-            nav.className = 'fixed bottom-0 left-0 w-full z-50 pointer-events-none'; // Pointer events handled by children
+            // Added 'transition-transform duration-300' for smooth sliding effects
+            nav.className = 'fixed bottom-0 left-0 w-full z-50 pointer-events-none transition-transform duration-300 ease-out'; 
             nav.innerHTML = this._getDockTemplate();
             document.body.appendChild(nav);
         }
@@ -53,27 +54,26 @@ export const UIHeader = {
                 <span class="absolute -bottom-1 w-1 h-1 rounded-full bg-emerald-400 opacity-0 transition-all group-[.active]:opacity-100"></span>
             </button>
 
-            <button onclick="Main.navigate('settings')" data-tab="settings" class="nav-btn w-12 h-12 rounded-xl flex items-center justify-center text-slate-500 hover:bg-white/5 active:scale-95 transition-all relative group">
-                <i class="fa-solid fa-user-gear text-xl transition-colors group-[.active]:text-amber-400"></i>
+            <button onclick="Main.toggleTheme()" data-tab="settings" class="nav-btn w-12 h-12 rounded-xl flex items-center justify-center text-slate-500 hover:bg-white/5 active:scale-95 transition-all relative group">
+                <i class="fa-solid fa-circle-half-stroke text-xl transition-colors group-[.active]:text-amber-400"></i>
                 <span class="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-400 opacity-0 transition-all group-[.active]:opacity-100"></span>
             </button>
 
         </div>
         `;
     },
+
     // ============================================================
     // 3. STATE MANAGEMENT
     // ============================================================
 
     _bindEvents() {
-        // Future-proofing: If we want to hide the dock on scroll down
-        // window.addEventListener('scroll', () => ... );
+        // Optional: Hide dock on scroll logic could go here
     },
 
     /**
      * Updates the highlighted tab based on the current view.
      * Called by Main.js router.
-     * @param {String} viewName - 'home', 'stats', 'arcade', etc.
      */
     updateActiveTab(viewName) {
         const nav = document.getElementById('main-nav');
@@ -81,31 +81,30 @@ export const UIHeader = {
 
         // 1. Reset all tabs
         const buttons = nav.querySelectorAll('.nav-btn');
-        buttons.forEach(btn => btn.classList.remove('active'));
+        buttons.forEach(btn => {
+            btn.classList.remove('active');
+            // Remove Tailwind specific active classes if manual manipulation is needed
+            // But the CSS group-[.active] handles it automatically based on class 'active'
+        });
 
-        // 2. Map view names to tab IDs
-        // (e.g., 'quiz' view shouldn't highlight 'home', or maybe it hides the dock)
-        let activeTab = viewName;
-        
-        // Edge Case: If in 'quiz' or 'results', usually we hide the dock
-        // But if we want to keep it, we might map 'quiz' -> 'home' or nothing.
-        if (viewName === 'quiz' || viewName === 'results') {
-            this.toggle(false); // Hide dock during test
+        // 2. Logic: Should we hide the dock?
+        // Hide on Quiz, Results, and Review pages to minimize distraction
+        if (['quiz', 'results', 'review'].includes(viewName)) {
+            this.toggle(false); 
             return;
         } else {
-            this.toggle(true); // Show dock otherwise
+            this.toggle(true); 
         }
 
         // 3. Highlight active tab
-        const targetBtn = nav.querySelector(`[data-tab="${activeTab}"]`);
+        const targetBtn = nav.querySelector(`[data-tab="${viewName}"]`);
         if (targetBtn) {
             targetBtn.classList.add('active');
         }
     },
 
     /**
-     * Shows or Hides the bottom dock.
-     * @param {Boolean} visible 
+     * Shows or Hides the bottom dock with animation.
      */
     toggle(visible) {
         const nav = document.getElementById('main-nav');
@@ -121,5 +120,5 @@ export const UIHeader = {
     }
 };
 
-// Global Exposure
 window.UIHeader = UIHeader;
+
