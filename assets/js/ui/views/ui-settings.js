@@ -95,6 +95,31 @@ export const UISettings = {
         };
         reader.readAsText(file);
     },
+    
+    async handleRepair() {
+        if (!confirm("This will wipe all existing questions and generate new ones. Continue?")) return;
+
+        const btn = document.activeElement;
+        if(btn) btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i>';
+
+        try {
+            // 1. Wipe Questions
+            if (window.DB) await window.DB.clear('questions');
+            
+            // 2. Force Seed
+            if (window.DataSeeder) {
+                await window.DataSeeder.seed();
+                alert("✅ Success! Database repaired. The app will now reload.");
+                window.location.reload();
+            } else {
+                throw new Error("DataSeeder not loaded.");
+            }
+        } catch (e) {
+            alert("❌ Error: " + e.message);
+            if(btn) btn.innerText = "Failed";
+        }
+    },
+
 
     async handleReset() {
         if(confirm("⚠️ FACTORY RESET WARNING ⚠️\n\nThis will permanently delete ALL your progress, history, and stats.\n\nAre you sure?")) {
@@ -195,6 +220,21 @@ export const UISettings = {
                     </div>
                 </button>
             </div>
+            
+                        <div class="pt-2 mb-3">
+                <button onclick="UISettings.handleRepair()" class="w-full glass-card p-5 flex items-center justify-between border-amber-500/30 hover:border-amber-500/60 group active:scale-95 transition-all">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
+                            <i class="fa-solid fa-screwdriver-wrench"></i>
+                        </div>
+                        <div class="text-left">
+                            <h3 class="text-xs font-black text-amber-500 group-hover:text-amber-400">Repair Database</h3>
+                            <p class="text-[9px] font-bold text-amber-500/50 uppercase">Force New Questions</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-amber-500/30 group-hover:text-amber-500 transition-colors"></i>
+                </button>
+
 
             <div class="pt-2">
                 <button onclick="UISettings.handleReset()" class="w-full glass-card p-5 flex items-center justify-between border-rose-500/30 hover:border-rose-500/60 group active:scale-95 transition-all">
