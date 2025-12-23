@@ -1,142 +1,150 @@
 /**
- * UI MANAGER (THE DIRECTOR)
- * Version: 2.0.0
+ * UI MANAGER (THE SKIN)
+ * Version: 3.0.0
  * Path: assets/js/ui/ui-manager.js
  * Responsibilities:
- * 1. Centralizes imports for all UI Views (ensuring they register with window).
- * 2. Manages the "App Shell" (Header, Background, Modals).
- * 3. Provides global UI utilities (Toast notifications, Loaders).
+ * 1. Manages the Global Loader (Spinner).
+ * 2. Handles Global Toasts/Notifications.
+ * 3. Initializes the App Shell (Header/Dock).
+ * * NOTE: View imports (UIHome, UIQuiz) have been moved to Main.js 
+ * to prevent circular dependencies and loading errors.
  */
 
-// 1. IMPORT SHARED COMPONENTS
 import { UIHeader } from './components/ui-header.js';
-import { UIOracle } from './components/ui-oracle.js';
-
-// 2. IMPORT VIEWS (Side-effect imports to register window.UIHome, etc.)
-// We import these here so Main.js doesn't need to import every single view.
-import { UIHome } from './views/ui-home.js';
-import { UIQuiz } from './views/ui-quiz.js';
-import { UIResults } from './views/ui-results.js';
-// import { UIArcade } from './views/ui-arcade.js'; // (Coming Phase 2)
-// import { UIStats } from './views/ui-stats.js';   // (Coming Phase 2)
 
 export const UI = {
     // ============================================================
     // 1. INITIALIZATION
     // ============================================================
-    
-    /**
-     * Called by Main.js during boot.
-     * Sets up the static parts of the page (Header, Background).
-     */
     init() {
         console.log("🎨 UI: Initializing App Shell...");
-
-        // A. Render the Global Header (Bottom Dock / Top Bar)
-        // We look for a dedicated header container or prepend it to body
-        this._setupShell();
-
-        // B. Initialize the Oracle (Background Animation)
-        if (UIOracle) {
-            UIOracle.init();
-        }
-
-        // C. Initialize Header Logic
-        if (UIHeader) {
+        
+        // 1. Initialize Header (Navigation Dock)
+        if (UIHeader && UIHeader.init) {
             UIHeader.init();
         }
+
+        // 2. Bind Global Clicks (e.g., closing modals on outside click)
+        document.addEventListener('click', (e) => {
+            // Future logic to close dropdowns/modals can go here
+            const modals = document.querySelectorAll('.auto-close-modal');
+            modals.forEach(modal => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+            });
+        });
 
         console.log("🎨 UI: Shell Ready.");
     },
 
+    // ============================================================
+    // 2. LOADERS & SPINNERS
+    // ============================================================
+
     /**
-     * Creates the structural HTML if missing from index.html
+     * Toggles the loading state. 
+     * Handles both the startup #boot-loader and the runtime #global-loader.
      */
-    _setupShell() {
-        // Ensure we have the main app container
-        let app = document.getElementById('app-container');
-        if (!app) {
-            app = document.createElement('div');
-            app.id = 'app-container';
-            app.className = 'view-container min-h-screen bg-slate-900 text-slate-200 font-sans pb-20'; // pb-20 for bottom dock space
-            document.body.prepend(app);
+    toggleLoader(show) {
+        // The runtime loader (created dynamically if needed)
+        let runtimeLoader = document.getElementById('global-loader');
+        // The static HTML loader (used during boot)
+        const bootLoader = document.getElementById('boot-loader');
+
+        if (show) {
+            // Hiding boot loader? No, we keep it if it's there, or show runtime
+            if (bootLoader && bootLoader.style.display !== 'none') {
+                return; // Boot loader is already visible
+            }
+
+            if (!runtimeLoader) {
+                this._createRuntimeLoader();
+                runtimeLoader = document.getElementById('global-loader');
+            }
+            runtimeLoader.classList.remove('hidden');
+            runtimeLoader.classList.add('flex');
+        } else {
+            // HIDE ALL LOADERS
+            if (runtimeLoader) {
+                runtimeLoader.classList.add('hidden');
+                runtimeLoader.classList.remove('flex');
+            }
+            
+            if (bootLoader) {
+                bootLoader.style.opacity = '0';
+                setTimeout(() => {
+                    bootLoader.style.display = 'none';
+                }, 500);
+            }
+        }
+    },
+
+    _createRuntimeLoader() {
+        const loader = document.createElement('div');
+        loader.id = 'global-loader';
+        loader.className = 'fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex flex-col items-center justify-center hidden animate-fade-in';
+        loader.innerHTML = `
+            <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <div class="mt-4 text-xs font-bold text-blue-400 uppercase tracking-widest animate-pulse">Processing...</div>
+        `;
+        document.body.appendChild(loader);
+    },
+
+    // ============================================================
+    // 3. NOTIFICATIONS (TOASTS)
+    // ============================================================
+
+    showToast(message, type = 'info') {
+        // Create container if missing
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none';
+            document.body.appendChild(container);
         }
 
-        // We don't render the header *inside* app-container usually,
-        // because the container might get cleared by the Router.
-        // The Header (UIHeader) usually injects itself into fixed positions.
-    },
-    // ============================================================
-    // 2. GLOBAL UTILITIES (Feedback & Notifications)
-    // ============================================================
-
-    /**
-     * Shows a temporary notification at the top of the screen.
-     * @param {String} message - Text to display
-     * @param {String} type - 'success', 'error', 'info'
-     */
-    showToast(message, type = 'info') {
-        const id = `toast-${Date.now()}`;
-        
-        // Colors
+        // Define Colors
         const colors = {
-            success: 'bg-emerald-500 text-white',
-            error: 'bg-rose-500 text-white',
-            info: 'bg-blue-500 text-white',
-            warning: 'bg-amber-500 text-white'
+            success: 'bg-emerald-500 text-white shadow-emerald-500/20',
+            error:   'bg-rose-500 text-white shadow-rose-500/20',
+            info:    'bg-slate-800 text-white border border-white/10 shadow-black/20',
+            warning: 'bg-amber-500 text-white shadow-amber-500/20'
         };
-        const colorClass = colors[type] || colors.info;
 
-        // Create Element
+        const bgClass = colors[type] || colors.info;
+        
+        // Icons
+        let icon = 'fa-circle-info';
+        if (type === 'success') icon = 'fa-circle-check';
+        if (type === 'error') icon = 'fa-triangle-exclamation';
+        if (type === 'warning') icon = 'fa-bell';
+
+        // Create Toast Element
         const toast = document.createElement('div');
-        toast.id = id;
-        toast.className = `fixed top-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-3 animate-slide-down ${colorClass}`;
+        toast.className = `${bgClass} px-4 py-3 rounded-xl shadow-xl text-xs font-bold uppercase tracking-wide animate-slide-in flex items-center gap-3 min-w-[220px] pointer-events-auto transform transition-all duration-300`;
         
         toast.innerHTML = `
-            <span class="text-sm font-bold tracking-wide">${message}</span>
+            <i class="fa-solid ${icon} text-lg"></i>
+            <span>${message}</span>
         `;
 
-        document.body.appendChild(toast);
+        container.appendChild(toast);
 
-        // Auto Remove
+        // Remove after 3s
         setTimeout(() => {
-            toast.classList.add('opacity-0', '-translate-y-4'); // Exit animation
-            setTimeout(() => toast.remove(), 500);
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            setTimeout(() => toast.remove(), 300);
         }, 3000);
     },
 
-    /**
-     * Toggles a full-screen blocking loader.
-     * @param {Boolean} show - True to show, False to hide
-     */
-    toggleLoader(show) {
-        let loader = document.getElementById('global-loader');
-        
-        if (show) {
-            if (!loader) {
-                loader = document.createElement('div');
-                loader.id = 'global-loader';
-                loader.className = 'fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex flex-col items-center justify-center';
-                loader.innerHTML = `
-                    <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    <div class="mt-4 text-xs font-bold text-blue-400 uppercase tracking-widest animate-pulse">Processing...</div>
-                `;
-                document.body.appendChild(loader);
-            }
-            loader.classList.remove('hidden');
-        } else {
-            if (loader) loader.classList.add('hidden');
-        }
-    },
-
     // ============================================================
-    // 3. THEME & SETTINGS
+    // 4. THEME & UTILS
     // ============================================================
 
-    /**
-     * Updates the UI based on user preferences.
-     * Called by Main.js on boot or Settings change.
-     */
     applyTheme(themeName) {
         const root = document.documentElement;
         if (themeName === 'dark') {
@@ -147,5 +155,6 @@ export const UI = {
     }
 };
 
-// Global Exposure
+// Global Export
 window.UI = UI;
+
