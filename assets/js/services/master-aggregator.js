@@ -1,7 +1,11 @@
 /**
  * MASTER AGGREGATOR (THE MANAGER)
- * Version: 2.2.0 (Syntax Verified)
+ * Version: 2.3.0 (Path Fix & Error Logging)
  * Path: assets/js/services/master-aggregator.js
+ * Responsibilities:
+ * 1. Spawns the background Oracle Worker.
+ * 2. Gathers data from DB (Academic + Behavioral).
+ * 3. Sends data to Worker and dispatches predictions to UI.
  */
 
 import { DB } from './db.js';
@@ -39,15 +43,17 @@ export const MasterAggregator = {
 
         if (window.Worker) {
             try {
-                // Try standard path relative to your index.html location
-                  const workerPath = 'assets/js/workers/oracle.worker.js'; 
+                // ✅ CORRECTION: Use standard path relative to index.html
+                // This is much safer for Android/Webview environments
+                const workerPath = 'assets/js/workers/oracle.worker.js'; 
 
-                 this.worker = new Worker(workerPath);
+                this.worker = new Worker(workerPath);
                 
                 this.worker.onmessage = (e) => this._handleWorkerResponse(e);
                 
                 this.worker.onerror = (err) => {
-                    console.error("🔮 OracleWorker Error:", err);
+                    // ✅ CORRECTION: Explicitly log the message to debug "Undefined" errors
+                    console.error("🔮 OracleWorker Critical Error:", err.message, "in file:", err.filename);
                     this.isCalculating = false;
                 };
 
@@ -60,7 +66,7 @@ export const MasterAggregator = {
         } else {
             console.warn("🔮 Web Workers not supported. Using Fallback.");
         }
-    }, // <--- THIS COMMA IS CRITICAL
+    },
 
     // ============================================================
     // 3. PUBLIC API
@@ -91,6 +97,7 @@ export const MasterAggregator = {
                     });
                     this._pendingResolve = resolve;
                 } else {
+                    // Fallback if worker failed to spawn
                     const fallbackResult = this._runFallbackSimulation(telemetry);
                     this.isCalculating = false;
                     this.lastPrediction = fallbackResult;
@@ -102,7 +109,7 @@ export const MasterAggregator = {
             this.isCalculating = false;
             return null;
         }
-    }, // <--- THIS COMMA IS CRITICAL
+    },
 
     // ============================================================
     // 4. DATA COLLECTION
@@ -152,7 +159,7 @@ export const MasterAggregator = {
                 daysToExam: this._getDaysToExam()
             }
         };
-    }, // <--- THIS COMMA IS CRITICAL
+    },
 
     // ============================================================
     // 5. WORKER RESPONSE
@@ -170,6 +177,8 @@ export const MasterAggregator = {
                 this._pendingResolve = null;
             }
             window.dispatchEvent(new CustomEvent('oracle-update', { detail: result }));
+        } else if (status === 'PONG') {
+            console.log("🔮 Oracle Connection Verified.");
         } else {
             console.error("🔮 Oracle Worker Error:", e.data.message);
             this.isCalculating = false;
