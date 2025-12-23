@@ -119,6 +119,115 @@ export const UISettings = {
             if(btn) btn.innerText = "Failed";
         }
     },
+        // ============================================================
+    // LOGIC: SARKARI STORAGE AUDIT
+    // ============================================================
+
+    handleCheckStorage() {
+        // 1. Open Modal immediately with "Loading" state
+        this.openModal('storageAudit');
+
+        // 2. Define the "Red Tape" excuses
+        const excuses = [
+            "Submitting application in triplicate...",
+            "File stuck at Table No. 4...",
+            "Server is on Chai Break ☕...",
+            "Searching for the missing stamp...",
+            "Moving file from Delhi to Mussoorie...",
+            "Asking Joint Secretary for permission...",
+            "Greasing the palms of the CPU...",
+            "Lo ji dekh lo, kya mil gaya dekh kar......"
+        ];
+
+        const statusEl = document.getElementById('sarkari-status');
+        const iconEl = document.getElementById('sarkari-icon');
+        let step = 0;
+
+        // 3. Run Animation Loop (The Bureaucracy)
+        const interval = setInterval(() => {
+            if(!statusEl) return clearInterval(interval);
+            
+            statusEl.innerText = excuses[step % excuses.length];
+            statusEl.classList.remove('animate-pulse');
+            void statusEl.offsetWidth; // Trigger reflow
+            statusEl.classList.add('animate-pulse');
+            
+            // Icon Bounce
+            iconEl.classList.remove('translate-y-0');
+            iconEl.classList.add('-translate-y-2');
+            setTimeout(() => iconEl.classList.remove('-translate-y-2'), 200);
+
+            step++;
+        }, 800);
+
+        // 4. Perform Calculation after 3.5 seconds (The "Wait")
+        setTimeout(() => {
+            clearInterval(interval);
+            this._renderStorageResult();
+        }, 3500);
+    },
+
+    _renderStorageResult() {
+        // NOW we do the heavy calculation
+        const get size = (key) => Math.round((localStorage.getItem(key) || "").length / 1024);
+        
+        const historySize = size('history');
+        const questionsSize = size('questions'); // This is the big one
+        const academicSize = size('academic_state');
+        const totalSize = Math.round(JSON.stringify(localStorage).length / 1024);
+
+        const container = document.getElementById('sarkari-container');
+        if(!container) return;
+
+        // Replace Animation with "Official Gazette" Table
+        container.innerHTML = `
+            <div class="text-center animate-slide-up">
+                <div class="w-16 h-16 mx-auto bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 text-2xl mb-4 border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                    <i class="fa-solid fa-check-double"></i>
+                </div>
+                <h2 class="text-xl font-black text-white uppercase tracking-tight mb-1">Audit Approved</h2>
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-6">Official Gazette Notification</p>
+                
+                <div class="bg-slate-800/50 rounded-xl border border-white/5 p-1 mb-6">
+                    <div class="grid grid-cols-2 gap-px bg-slate-700/50 border border-white/5 overflow-hidden rounded-lg">
+                        <div class="bg-slate-900/80 p-3 text-left">
+                            <div class="text-[9px] font-bold text-slate-500 uppercase">Dept. of Archives</div>
+                            <div class="text-xs font-mono text-white">Question Bank</div>
+                        </div>
+                        <div class="bg-slate-900/80 p-3 text-right">
+                            <div class="text-xs font-mono font-bold text-blue-400">${questionsSize} KB</div>
+                        </div>
+
+                        <div class="bg-slate-900/80 p-3 text-left">
+                            <div class="text-[9px] font-bold text-slate-500 uppercase">Service Record</div>
+                            <div class="text-xs font-mono text-white">Exam History</div>
+                        </div>
+                        <div class="bg-slate-900/80 p-3 text-right">
+                            <div class="text-xs font-mono font-bold text-purple-400">${historySize} KB</div>
+                        </div>
+
+                        <div class="bg-slate-900/80 p-3 text-left">
+                            <div class="text-[9px] font-bold text-slate-500 uppercase">Intel Bureau</div>
+                            <div class="text-xs font-mono text-white">Academic Stats</div>
+                        </div>
+                        <div class="bg-slate-900/80 p-3 text-right">
+                            <div class="text-xs font-mono font-bold text-emerald-400">${academicSize} KB</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-4 border-t border-white/5 mt-1 bg-white/5 rounded-b-lg">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Bureaucratic Burden</span>
+                        <span class="text-sm font-black text-white font-mono">${(totalSize/1024).toFixed(2)} MB</span>
+                    </div>
+                </div>
+
+                <button onclick="UISettings.closeModal()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-600/20 active:scale-95 transition-all">
+                    Jai Hind (Dismiss)
+                </button>
+            </div>
+        `;
+    },
+
 
 
     async handleReset() {
@@ -157,12 +266,8 @@ export const UISettings = {
             </div>
         </header>`;
     },
-
+    
     _getSystemPrefsTemplate() {
-        // Calculate Storage Usage (Mock logic or actual localstorage length)
-        const usedKB = Math.round(JSON.stringify(localStorage).length / 1024);
-        const percent = Math.min(100, (usedKB / 5000) * 100); 
-
         return `
         <section class="space-y-3">
             <label class="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-4">System Preferences</label>
@@ -182,17 +287,24 @@ export const UISettings = {
                 </button>
             </div>
 
-            <div class="glass-panel p-5 rounded-2xl">
-                <div class="flex justify-between items-end mb-2">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">Local Storage</span>
-                    <span class="text-xs font-mono font-bold text-emerald-400">${usedKB} KB Used</span>
+            <button onclick="UISettings.handleCheckStorage()" class="w-full glass-panel p-4 rounded-2xl flex items-center justify-between group hover:bg-amber-500/5 transition-all border border-transparent hover:border-amber-500/20">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-file-invoice"></i>
+                    </div>
+                    <div class="text-left">
+                        <h3 class="text-xs font-bold text-white group-hover:text-amber-400 transition-colors">Storage Audit</h3>
+                        <p class="text-[9px] font-bold text-slate-500 uppercase">File RTI Application</p>
+                    </div>
                 </div>
-                <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div class="h-full bg-emerald-500 rounded-full shadow-[0_0_10px_#10b981]" style="width: ${percent}%"></div>
+                <div class="px-3 py-1.5 rounded-lg bg-slate-800 text-[9px] font-black text-slate-400 border border-white/5 uppercase tracking-wider group-hover:bg-amber-500 group-hover:text-slate-900 transition-all">
+                    Submit
                 </div>
-            </div>
+            </button>
         </section>`;
     },
+
+     
 
     _getDataControlTemplate() {
         return `
@@ -454,6 +566,7 @@ export const UISettings = {
             case 'privacy': return this._renderLegal('privacy');
             case 'terms': return this._renderLegal('terms');
             case 'contact': return this._renderLegal('contact');
+            case 'storageAudit': return this._renderStorageBureaucrat();
             default: return `<div class="p-8 text-center text-rose-500 font-bold">Error: Unknown Modal Type</div>`;
         }
     },
@@ -512,6 +625,37 @@ export const UISettings = {
             </div>
         </div>`;
     },
+    
+   _renderStorageBureaucrat() {
+        return `
+        <div id="sarkari-container" class="p-8 pb-12 text-center">
+            <div class="relative w-24 h-24 mx-auto mb-8">
+                <div class="absolute inset-0 bg-amber-500 rounded-full blur-2xl opacity-20 animate-pulse"></div>
+                
+                <div id="sarkari-icon" class="relative w-full h-full bg-slate-800 border border-amber-500/30 rounded-full flex items-center justify-center text-4xl text-amber-500 shadow-xl transition-transform duration-200">
+                    <i class="fa-solid fa-stamp"></i>
+                </div>
+
+                <div class="absolute -right-4 top-0 text-slate-600 text-xl animate-bounce" style="animation-delay: 0.1s"><i class="fa-solid fa-file"></i></div>
+                <div class="absolute -left-2 bottom-0 text-slate-600 text-lg animate-bounce" style="animation-delay: 0.3s"><i class="fa-solid fa-file-lines"></i></div>
+            </div>
+
+            <h2 class="text-2xl font-black text-white uppercase tracking-tight mb-2">Audit In Progress</h2>
+            
+            <div class="h-8 flex items-center justify-center">
+                <p id="sarkari-status" class="text-[10px] font-bold text-amber-500 uppercase tracking-widest animate-pulse">
+                    Initiating Government Protocol...
+                </p>
+            </div>
+
+            <div class="mt-8 mx-auto w-32 h-1 bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-full bg-amber-500 w-1/3 animate-[shimmer_2s_infinite_linear]"></div>
+            </div>
+            
+            <p class="text-[10px] text-slate-500 mt-4 italic">"Please stand by. Lunch time is over soon."</p>
+        </div>`;
+    },
+
 
     _renderTechFAQ() {
         return `
