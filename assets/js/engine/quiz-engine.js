@@ -73,7 +73,7 @@ export const Engine = {
 
         try {
             // 1. Save to History
-            await DB.add('history', result);
+            await DB.put('history', result);
             
             // 2. Update Mastery (The missing function!)
             await this._updateMastery(result);
