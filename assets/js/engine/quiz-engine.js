@@ -1,15 +1,10 @@
 /**
  * QUIZ ENGINE (THE BRAIN)
- * Version: 2.2.0 (Syntax Verified)
+ * Version: 2.3.0 (Fixed Save Crash & Timer)
  * Path: assets/js/engine/quiz-engine.js
- * Responsibilities:
- * 1. Manages the Test Session (Timer, Questions, Answers).
- * 2. Calculates Real-time Stats (Accuracy, Speed).
- * 3. Saves Progress to DB automatically.
  */
 
 import { DB } from '../services/db.js';
-import { CONFIG } from '../config.js';
 
 export const Engine = {
     // ============================================================
@@ -22,10 +17,9 @@ export const Engine = {
         totalDuration: 0,
         timeLeft: 0,
         questions: [],
-        answers: {}, // Map<QuestionID, OptionIndex>
+        answers: {}, 
         bookmarks: new Set(),
-        currentIndex: 0,
-        historyLog: [] // For analytics (time per question)
+        currentIndex: 0
     },
 
     timerInterval: null,
@@ -34,44 +28,40 @@ export const Engine = {
     // 2. SESSION MANAGEMENT
     // ============================================================
 
-    /**
-     * Starts a new test session.
-     * @param {String} subjectId - 'polity', 'history', etc.
-     */
     async startSession(subjectId) {
         console.log(`🧠 Engine: Starting Session for ${subjectId}`);
         
-        // 1. Reset State
-        this._resetState();
+        // 1. Clean Slate
+        this.terminateSession(); // Ensure any old timers are killed
+
+        // 2. Setup New State
         this.state.subjectId = subjectId;
         this.state.active = true;
         this.state.startTime = Date.now();
+        this.state.currentIndex = 0;
+        this.state.answers = {};
+        this.state.bookmarks = new Set();
 
-        // 2. Load Questions (Mock Data or from DB)
-        // For MVP, we generate mock questions if DB is empty
+        // 3. Load Questions
         this.state.questions = await this._fetchQuestions(subjectId);
         
-        if (this.state.questions.length === 0) {
+        if (!this.state.questions || this.state.questions.length === 0) {
             console.error("Engine: No questions found!");
             return;
         }
 
-        // 3. Set Timer (e.g., 30 mins for 15 questions)
-        // 2 minutes per question standard
+        // 4. Set Timer (2 mins per question)
         const duration = this.state.questions.length * 2 * 60; 
         this.state.totalDuration = duration;
         this.state.timeLeft = duration;
 
-        // 4. Start Timer Loop
+        // 5. Start Timer Loop
         this._startTimer();
 
-        // 5. Broadcast Start Event
+        // 6. Notify UI
         this._emit('SESSION_START');
-    }, // <--- THIS COMMA IS CRITICAL
+    },
 
-    /**
-     * Ends the session, calculates score, and saves to History.
-     */
     async submitQuiz() {
         if (!this.state.active) return;
 
@@ -79,31 +69,34 @@ export const Engine = {
         this._stopTimer();
         this.state.active = false;
 
-        // 1. Calculate Results
         const result = this._calculateResult();
 
-        // 2. Save to Database
         try {
+            // 1. Save to History
             await DB.add('history', result);
             
-            // Update Academic State (Mastery Levels)
+            // 2. Update Mastery (The missing function!)
             await this._updateMastery(result);
 
-            // 3. Notify UI (Main Controller will switch view)
+            console.log("🧠 Engine: Results Saved Successfully.");
+
+            // 3. Navigate to Results
             if (window.Main && window.Main.handleQuizCompletion) {
                 window.Main.handleQuizCompletion(result);
             }
 
         } catch (e) {
             console.error("Engine: Save Failed", e);
-            alert("Error saving results. Check console.");
+            // Even if save fails, show results so user doesn't get stuck
+            if (window.Main && window.Main.handleQuizCompletion) {
+                window.Main.handleQuizCompletion(result);
+            }
         }
-    }, // <--- THIS COMMA IS CRITICAL
+    },
 
     terminateSession() {
         this._stopTimer();
         this.state.active = false;
-        this._resetState();
     },
 
     // ============================================================
@@ -112,16 +105,9 @@ export const Engine = {
 
     submitAnswer(questionId, optionIndex) {
         if (!this.state.active) return;
-
-        // Save Answer
         this.state.answers[questionId] = optionIndex;
-        
-        // Log Time Taken (Analytics)
-        // We could track time per question here in v2
-
-        // Broadcast Update
         this._emit('ANSWER_SAVED', { questionId, optionIndex });
-    }, // <--- THIS COMMA IS CRITICAL
+    },
 
     toggleBookmark(questionId) {
         if (this.state.bookmarks.has(questionId)) {
@@ -158,18 +144,17 @@ export const Engine = {
     // ============================================================
 
     _startTimer() {
-        if (this.timerInterval) clearInterval(this.timerInterval);
+        this._stopTimer(); // Safety clear
         
         this.timerInterval = setInterval(() => {
             this.state.timeLeft--;
             
-            // Broadcast Tick (for UI Timer)
             window.dispatchEvent(new CustomEvent('quiz-tick', { 
                 detail: { timeLeft: this.state.timeLeft } 
             }));
 
             if (this.state.timeLeft <= 0) {
-                this.submitQuiz(); // Auto-submit
+                this.submitQuiz(); 
             }
         }, 1000);
     },
@@ -179,21 +164,6 @@ export const Engine = {
             clearInterval(this.timerInterval);
             this.timerInterval = null;
         }
-    },
-
-    _resetState() {
-        this.state = {
-            active: false,
-            subjectId: null,
-            startTime: null,
-            totalDuration: 0,
-            timeLeft: 0,
-            questions: [],
-            answers: {},
-            bookmarks: new Set(),
-            currentIndex: 0,
-            historyLog: []
-        };
     },
 
     _calculateResult() {
@@ -207,22 +177,24 @@ export const Engine = {
             if (userAnswer !== undefined) {
                 if (userAnswer === q.correctAnswer) {
                     correct++;
-                    score += 2; // +2 for correct
+                    score += 2;
                 } else {
                     wrong++;
-                    score -= 0.66; // -0.66 negative marking
+                    score -= 0.66;
                 }
             }
         });
 
-        // Ensure score isn't negative for display niceness (optional)
-        // score = Math.max(0, score);
+        // Use Date.now() if crypto is unavailable (older phones)
+        const id = (window.crypto && window.crypto.randomUUID) 
+            ? crypto.randomUUID() 
+            : 'res_' + Date.now();
 
         return {
-            id: crypto.randomUUID(), // Unique ID for this result
+            id: id,
             timestamp: Date.now(),
             subject: this.state.subjectId,
-            score: score,
+            score: Number(score.toFixed(2)),
             totalMarks: total * 2,
             correct: correct,
             wrong: wrong,
@@ -239,23 +211,44 @@ export const Engine = {
     },
 
     // ============================================================
-    // 5. DATA FETCHING (MOCK + REAL)
+    // 5. MISSING FUNCTION ADDED HERE
+    // ============================================================
+    async _updateMastery(result) {
+        try {
+            // Update the "Academic State" table for the Oracle
+            const subjectId = result.subject;
+            const currentEntry = await DB.get('academic_state', subjectId) || { subjectId, mastery: 0, attempts: 0 };
+            
+            // Simple Moving Average for Mastery
+            const newMastery = ((currentEntry.mastery * currentEntry.attempts) + result.score) / (currentEntry.attempts + 1);
+            
+            currentEntry.mastery = newMastery;
+            currentEntry.attempts += 1;
+            currentEntry.lastStudied = Date.now();
+
+            await DB.put('academic_state', currentEntry);
+            
+        } catch (e) {
+            console.warn("Engine: Failed to update mastery stats (non-critical)", e);
+        }
+    },
+
+    // ============================================================
+    // 6. DATA FETCHING
     // ============================================================
 
     async _fetchQuestions(subjectId) {
-        // 1. Try fetching from DataSeeder (if stored in DB)
-        // For now, we return a generated mock list for stability
-        
+        // Mock Generator
         return Array.from({ length: 15 }, (_, i) => ({
             id: `q_${subjectId}_${i}`,
-            text: `Question ${i + 1}: This is a sample question for ${subjectId}. It tests your conceptual understanding.`,
+            text: `Question ${i + 1} for ${subjectId}. <br> What is the correct answer?`,
             options: [
-                "Option A: This is a plausible distractor.",
-                "Option B: This is the correct answer.",
-                "Option C: This is completely wrong.",
-                "Option D: This is confusing."
+                "This is the wrong answer",
+                "This is the correct answer (Option B)",
+                "Another wrong answer",
+                "Definitely not this one"
             ],
-            correctAnswer: 1 // Always B for test
+            correctAnswer: 1 
         }));
     }
 };
