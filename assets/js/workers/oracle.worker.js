@@ -6,6 +6,7 @@
  * 1. Runs off the main thread to prevent UI freezing.
  * 2. Implements "Ensemble Stacking" (LHS + Bayesian + Heuristic Pattern Rec).
  * 3. Returns a probability cloud and risk flags.
+ * * NOTE: This file contains PURE LOGIC. No CSS refactoring required.
  */
 
 // ============================================================
