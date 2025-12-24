@@ -1,7 +1,11 @@
 /**
  * ACADEMIC ENGINE (THE PROFESSOR)
- * Version: 2.5.0 (Fixed Mastery Calculation)
+ * Version: 2.6.0 (Patched: Mastery Field Alignment)
  * Path: assets/js/engine/academic-engine.js
+ * Responsibilities:
+ * 1. Tracks Subject Mastery (0-100%) using WMI (Weighted Mastery Index).
+ * 2. Applies "Forgetting Curve" decay based on inactivity.
+ * 3. Identifies Blind Spots and aggregates stats for the Oracle.
  */
 
 import { DB } from '../services/db.js';
@@ -69,8 +73,9 @@ export const AcademicEngine = {
     async _initializeEmptyState() {
         const promises = [];
         Object.keys(this.SUBJECTS).forEach(subId => {
+            // 🛡️ FIX: Standardized 'mastery' field (was 'score')
             const emptyRecord = {
-                subjectId: subId, score: 0, stability: 0, lastTested: 0, attemptsL1: 0, attemptsL3: 0, streak: 0
+                subjectId: subId, mastery: 0, stability: 0, lastTested: 0, attemptsL1: 0, attemptsL3: 0, streak: 0
             };
             this.state.mastery[subId] = emptyRecord;
             this.state.coverage[subId] = 0.0;
@@ -80,7 +85,7 @@ export const AcademicEngine = {
     },
 
     // ============================================================
-    // 4. CORE LOGIC
+    // 3. CORE LOGIC
     // ============================================================
     async processTestResult(result, detailedQuestions) {
         console.log("🎓 AcademicEngine: Processing Test Result...");
@@ -125,7 +130,7 @@ export const AcademicEngine = {
             const level = q.level || 'L1'; 
             const weight = this.DIFFICULTY_WEIGHTS[level] || 1.0;
 
-            // ✅ CRITICAL FIX: Explicit check for true
+            // Strict boolean check for correctness
             if (q.isCorrect === true) {
                 totalWeightedScore += (1 * weight);
             }
@@ -147,17 +152,23 @@ export const AcademicEngine = {
 
     _updateMasteryState(subId, perf) {
         const current = this.state.mastery[subId] || { 
-            score: 0, stability: 0, attemptsL1: 0, attemptsL3: 0, streak: 0 
+            mastery: 0, stability: 0, attemptsL1: 0, attemptsL3: 0, streak: 0 
         };
         
+        // 1. Calculate Confidence based on data volume
         const totalAttempts = (current.attemptsL1 || 0) + (current.attemptsL3 || 0) + perf.totalQs;
         const dataConfidence = Math.min(1.0, totalAttempts / 100); 
+        
+        // 2. Calculate Update Weight (More confidence = Slower updates, stability)
         const updateWeight = 0.5 - (dataConfidence * 0.4); 
-        const newScore = current.score + ((perf.wmi - current.score) * updateWeight);
+        
+        // 3. Weighted Moving Average for Mastery
+        // 🛡️ FIX: Using 'mastery' field consistently
+        const newMastery = current.mastery + ((perf.wmi - current.mastery) * updateWeight);
 
         const updatedRecord = {
             subjectId: subId,
-            score: parseFloat(newScore.toFixed(2)),
+            mastery: parseFloat(newMastery.toFixed(2)), // 🛡️ FIX: Saved as 'mastery'
             stability: parseFloat(dataConfidence.toFixed(2)),
             lastTested: Date.now(),
             attemptsL1: (current.attemptsL1 || 0) + perf.l1Count,
@@ -180,12 +191,15 @@ export const AcademicEngine = {
 
         const config = this.SUBJECTS[subId];
         const decayRate = config ? config.decayRate : 0.02;
+        
+        // Forgetting Curve Formula
         const retentionFactor = Math.pow((1.0 - decayRate), diffDays);
         
-        const oldScore = current.score;
-        const decayedScore = oldScore * retentionFactor;
+        const oldMastery = current.mastery;
+        const decayedMastery = oldMastery * retentionFactor;
 
-        this.state.mastery[subId].score = parseFloat(decayedScore.toFixed(2));
+        // 🛡️ FIX: Updating 'mastery'
+        this.state.mastery[subId].mastery = parseFloat(decayedMastery.toFixed(2));
     },
 
     async _checkKnowledgeDecay() {
@@ -195,6 +209,7 @@ export const AcademicEngine = {
             const record = this.state.mastery[subId];
             if (!record.lastTested) return;
             const diffDays = (now - record.lastTested) / (1000 * 60 * 60 * 24);
+            // Only force update if significant time passed > 2 days
             if (diffDays > 2) {
                 this._applyDecayToSubject(subId);
                 this.state.mastery[subId].lastTested = now;
@@ -206,7 +221,7 @@ export const AcademicEngine = {
 
     async _updateCoverage(subId, questions) {
         const currentDensity = this.state.coverage[subId] || 0.0;
-        const addedDensity = (questions.length * 0.002);
+        const addedDensity = (questions.length * 0.002); // 0.2% coverage per question
         this.state.coverage[subId] = Math.min(1.0, currentDensity + addedDensity);
     },
 
@@ -215,12 +230,17 @@ export const AcademicEngine = {
         Object.keys(this.SUBJECTS).forEach(subId => {
             const config = this.SUBJECTS[subId];
             const coverage = this.state.coverage[subId] || 0;
+            // High priority subject but low coverage
             if (config.weight > 0.10 && coverage < 0.10) {
                 blindSpots.push(subId);
             }
         });
         this.state.blindSpots = blindSpots;
     },
+
+    // ============================================================
+    // 5. DATA ACCESSORS
+    // ============================================================
 
     getAggregatedStats() {
         return {
@@ -238,11 +258,13 @@ export const AcademicEngine = {
         return Object.keys(this.state.mastery).map(subId => {
             const m = this.state.mastery[subId];
             const c = this.SUBJECTS[subId];
+            // 🛡️ FIX: Map 'mastery' to UI 'score'
+            const scoreVal = m.mastery || 0;
             return {
                 id: subId,
                 name: c ? c.name : subId,
-                score: Math.round(m.score),
-                color: m.score > 75 ? 'green' : (m.score > 40 ? 'yellow' : 'red')
+                score: Math.round(scoreVal),
+                color: scoreVal > 75 ? 'green' : (scoreVal > 40 ? 'yellow' : 'red')
             };
         });
     },
@@ -250,7 +272,7 @@ export const AcademicEngine = {
     getGlobalMastery() {
         const subjects = Object.values(this.state.mastery);
         if (subjects.length === 0) return 0;
-        const total = subjects.reduce((sum, sub) => sum + (sub.score || 0), 0);
+        const total = subjects.reduce((sum, sub) => sum + (sub.mastery || 0), 0);
         return Math.round(total / subjects.length);
     },
 
@@ -261,8 +283,8 @@ export const AcademicEngine = {
     },
 
     getGlobalAccuracy() {
+        // Simple proxy for now, ideally tracked separately
         return this.getGlobalMastery();
     }
 };
-
 
