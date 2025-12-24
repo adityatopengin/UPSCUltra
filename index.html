@@ -11,6 +11,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+    <link rel="manifest" href="manifest.json">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -68,86 +70,7 @@
         }
     </script>
     
-    <style>
-        :root {
-            --bg-app: #0f172a;
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --glass-bg: rgba(255, 255, 255, 0.03);
-        }
-        
-        body {
-            background-color: var(--bg-app);
-            color: #f8fafc;
-            -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: none; /* Prevents pull-to-refresh on mobile */
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        
-        /* Utility Classes */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-        }
-
-        .premium-card {
-            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
-            border: 1px solid rgba(255,255,255,0.05);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-        }
-
-        .premium-panel {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255,255,255,0.05);
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
-        }
-
-        .premium-text-head {
-            background: linear-gradient(to right, #fff, #94a3b8);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-
-        .icon-pillow {
-            width: 48px; height: 48px;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 16px;
-            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
-            box-shadow: 
-                inset 1px 1px 1px rgba(255,255,255,0.1),
-                inset -1px -1px 1px rgba(0,0,0,0.2),
-                0 4px 10px rgba(0,0,0,0.3);
-        }
-
-        /* Subject Flavors */
-        .flavor-blue { --accent: #3b82f6; }
-        .flavor-pink { --accent: #ec4899; }
-        .flavor-gold { --accent: #f59e0b; }
-        .flavor-green { --accent: #10b981; }
-        .flavor-purple { --accent: #a855f7; }
-        .flavor-cyan { --accent: #06b6d4; }
-
-        .flavor-blue .icon-pillow { color: #60a5fa; box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); }
-        .flavor-pink .icon-pillow { color: #f472b6; box-shadow: 0 0 15px rgba(236, 72, 153, 0.2); }
-        .flavor-gold .icon-pillow { color: #fbbf24; box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
-        .flavor-green .icon-pillow { color: #34d399; box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
-        .flavor-purple .icon-pillow { color: #c084fc; box-shadow: 0 0 15px rgba(168, 85, 247, 0.2); }
-        .flavor-cyan .icon-pillow { color: #22d3ee; box-shadow: 0 0 15px rgba(6, 182, 212, 0.2); }
-
-        .safe-area-pt { padding-top: env(safe-area-inset-top); }
-        .safe-area-pb { padding-bottom: env(safe-area-inset-bottom); }
-    </style>
+    <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
     
@@ -171,30 +94,16 @@
         });
 
         // 2. Async Errors (Promise Rejections - DB, Network, Workers)
-        // 🛡️ FIX: Added this listener to catch silent failures
         window.addEventListener('unhandledrejection', function(event) {
             console.error("Unhandled Promise Rejection:", event.reason);
-            const container = document.getElementById('app-container');
-            if(container) {
-                container.innerHTML = `
-                    <div style="position:fixed; inset:0; z-index:9999; background: #000; color:#fbbf24; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:2rem;">
-                        <i class="fa-solid fa-bug" style="font-size:3rem; margin-bottom:1rem;"></i>
-                        <h1 style="font-size:1.5rem; font-weight:900; margin-bottom:0.5rem;">ASYNC CRASH</h1>
-                        <p style="opacity:0.7; font-family:monospace; margin-bottom:2rem; font-size:0.8rem;">
-                            ${event.reason ? (event.reason.message || event.reason) : 'Unknown Promise Error'}
-                        </p>
-                        <button onclick="window.location.reload()" style="padding:12px 24px; background-color:#fbbf24; color:black; border:none; border-radius:12px; font-weight:bold; cursor:pointer;">
-                            RETRY SYSTEM
-                        </button>
-                    </div>
-                `;
-            }
+            // Ignore benign resize errors common in Chart.js
+            if (event.reason && event.reason.message && event.reason.message.includes('ResizeObserver')) return;
         });
     </script>
     
     <div id="app-container" class="relative z-10 w-full min-h-screen pb-32 transition-all duration-300">
         
-        <div id="boot-loader" class="fixed inset-0 z-50 flex flex-col items-center justify-center" style="background-color: var(--bg-app);">
+        <div id="boot-loader" class="fixed inset-0 z-[100] flex flex-col items-center justify-center" style="background-color: var(--bg-app);">
             <div class="w-16 h-16 border-4 border-t-transparent rounded-full animate-spin" style="border-color: var(--primary); border-top-color: transparent;"></div>
             <div class="mt-6 text-xs font-bold uppercase tracking-[0.2em] animate-pulse" style="color: var(--primary);">
                 Initializing System
@@ -207,6 +116,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>
+        // Only init if needed, usually tied to debug flag, but harmless here
         if (window.eruda) eruda.init();
     </script>
 
