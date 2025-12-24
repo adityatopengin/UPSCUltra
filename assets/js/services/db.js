@@ -1,14 +1,15 @@
 /**
  * DB SERVICE (THE WAREHOUSE)
  * Path: assets/js/services/db.js
- * Version: 2.2.0
- * Status: Added StorageService Export
+ * Version: 2.3.0 (Patched: Added Indexes for Source & Tags)
+ * Status: Production Ready
  */
 
 export const DB = {
     // Configuration
     _dbName: 'UPSCSuperApp_DB',
-    _version: 2, 
+    // 🛡️ UPDATE: Bumped version to 3 to trigger schema upgrade for new fields
+    _version: 3, 
     _db: null,
 
     // ============================================================
@@ -39,14 +40,28 @@ export const DB = {
                     mStore.createIndex('subjectId', 'subjectId', { unique: false });
                 }
 
-                // 3. Questions
+                // 3. Questions (UPDATED)
+                let qStore;
                 if (!db.objectStoreNames.contains('questions')) {
-                    const qStore = db.createObjectStore('questions', { keyPath: 'id' });
-                    qStore.createIndex('subject', 'subject', { unique: false });
-                    qStore.createIndex('topic', 'topic', { unique: false });
-                    qStore.createIndex('level', 'level', { unique: false }); 
-                    qStore.createIndex('random', 'random', { unique: false });
+                    qStore = db.createObjectStore('questions', { keyPath: 'id' });
+                } else {
+                    qStore = request.transaction.objectStore('questions');
                 }
+
+                // Standard Indexes
+                if (!qStore.indexNames.contains('subject')) qStore.createIndex('subject', 'subject', { unique: false });
+                if (!qStore.indexNames.contains('topic')) qStore.createIndex('topic', 'topic', { unique: false });
+                if (!qStore.indexNames.contains('level')) qStore.createIndex('level', 'level', { unique: false });
+                if (!qStore.indexNames.contains('random')) qStore.createIndex('random', 'random', { unique: false });
+
+                // 🛡️ NEW: Support for Holistic Assessment Features
+                // Allows filtering by "UPSC 2022" vs "Mock"
+                if (!qStore.indexNames.contains('source')) qStore.createIndex('source', 'source', { unique: false });
+                // Allows filtering by "Conceptual" vs "Factual"
+                if (!qStore.indexNames.contains('type')) qStore.createIndex('type', 'type', { unique: false });
+                // Allows searching by Tags (MultiEntry for Arrays)
+                if (!qStore.indexNames.contains('tags')) qStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
+
 
                 // 4. Academic State
                 if (!db.objectStoreNames.contains('academic_state')) {
@@ -178,7 +193,7 @@ export const DB = {
 };
 
 /**
- * ✅ ADDED MISSING EXPORT: STORAGE SERVICE
+ * STORAGE SERVICE
  * Handles JSON Import/Export for Backup functionality
  */
 export const StorageService = {
