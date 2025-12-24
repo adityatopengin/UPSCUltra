@@ -1,6 +1,6 @@
 /**
  * UI-HOME (THE DASHBOARD)
- * Version: 3.0.0 (Nebula OS Final)
+ * Version: 3.1.0 (Crash Proofed & Async Safe)
  * Path: assets/js/ui/views/ui-home.js
  * Responsibilities:
  * 1. Renders the Oracle HUD (AI Prediction).
@@ -21,46 +21,58 @@ export const UIHome = {
     async render(container) {
         // A. Clear Container & Set Layout
         container.innerHTML = '';
-        // Increased padding to ensure scrolling clears the "Floor Fog"
         container.className = 'view-container pb-40 px-4'; 
 
-        // B. Update Header State
+        // B. Update Header State (Safety Check)
         if (window.UI && window.UIHeader) {
             window.UIHeader.toggle(true);
             window.UIHeader.updateActiveTab('home');
         }
 
-        // C. Render The Oracle HUD
-        const oracleSection = document.createElement('div');
-        oracleSection.className = 'oracle-container premium-card mb-6 p-6 relative overflow-hidden rounded-[32px] min-h-[220px] animate-fade-in';
-        // Add the Oracle Mist effect (CSS class)
-        const mist = document.createElement('div');
-        mist.className = 'oracle-mist';
-        oracleSection.appendChild(mist);
-        
-        const content = document.createElement('div');
-        content.className = 'relative z-10';
-        content.innerHTML = this._getOracleSkeleton();
-        oracleSection.appendChild(content);
-        
-        container.appendChild(oracleSection);
+        // 🛡️ CRASH PROOFING: Create Layout Slots
+        // This ensures UI structure exists immediately, preventing layout shifts
+        // or white screens if async data (DB/Oracle) takes time to load.
+        const slots = {
+            oracle: document.createElement('div'),
+            resume: document.createElement('div'),
+            toggle: document.createElement('div'),
+            grids: document.createElement('div')
+        };
 
-        // D. Trigger Prediction Engine (Async)
-        this._initOracle(oracleSection);
+        // Append slots in specific visual order
+        container.append(slots.oracle, slots.resume, slots.toggle, slots.grids);
 
-        // E. Render "Resume Learning" Card
-        await this._renderResumeCard(container);
-
-        // F. Render The Toggle Switch (GS1 / CSAT)
-        this._renderToggleSwitch(container);
-
-        // G. Render The Grids (Both, but one hidden)
-        await this._renderSubjectGrids(container);
+        // C. Render Components into Slots (Independent Execution)
+        this._renderOracleSection(slots.oracle);
+        this._renderResumeCard(slots.resume); // Async, won't block grids
+        this._renderToggleSwitch(slots.toggle);
+        this._renderSubjectGrids(slots.grids);
     },
 
     // ============================================================
     // 2. ORACLE INTEGRATION
     // ============================================================
+
+    _renderOracleSection(slot) {
+        const oracleSection = document.createElement('div');
+        oracleSection.className = 'oracle-container premium-card mb-6 p-6 relative overflow-hidden rounded-[32px] min-h-[220px] animate-fade-in';
+        
+        // Mist Effect
+        const mist = document.createElement('div');
+        mist.className = 'oracle-mist';
+        oracleSection.appendChild(mist);
+        
+        // Content Skeleton
+        const content = document.createElement('div');
+        content.className = 'relative z-10';
+        content.innerHTML = this._getOracleSkeleton();
+        oracleSection.appendChild(content);
+        
+        slot.appendChild(oracleSection);
+
+        // Trigger Async Logic
+        this._initOracle();
+    },
 
     _getOracleSkeleton() {
         return `
@@ -98,16 +110,18 @@ export const UIHome = {
             </div>
 
             <div id="warning-container" class="relative z-10 mt-6 flex gap-2 overflow-x-auto no-scrollbar">
-                </div>
+            </div>
         `;
     }, 
 
-    async _initOracle(containerElement) {
+    async _initOracle() {
+        // 🛡️ SAFETY: Check if Oracle UI Component is loaded
         if (window.UIOracle) {
             window.UIOracle.init(); 
         }
 
         try {
+            // 🛡️ SAFETY: Check if Aggregator exists before calling
             if (MasterAggregator) {
                 const prediction = await MasterAggregator.getPrediction();
                 if (window.UIOracle && prediction) {
@@ -120,7 +134,7 @@ export const UIHome = {
             if (probText) {
                 probText.innerText = "SYSTEM OFFLINE";
                 probText.classList.remove('animate-pulse');
-                probText.style.color = 'var(--danger)';
+                probText.style.color = '#f43f5e'; // Tailwind Rose-500
             }
         }
     }, 
@@ -129,8 +143,9 @@ export const UIHome = {
     // 3. RESUME CARD
     // ============================================================
 
-    async _renderResumeCard(container) {
+    async _renderResumeCard(slot) {
         try {
+            // 🛡️ SAFETY: Graceful fail if DB is locked
             const allHistory = await DB.getAll('history');
             
             if (!allHistory || allHistory.length === 0) return;
@@ -179,10 +194,11 @@ export const UIHome = {
                 </div>
             `;
             
-            container.appendChild(card);
+            slot.appendChild(card);
 
         } catch (e) {
             console.warn("UIHome: Failed to render resume card", e);
+            // No user facing error needed, just don't show the card
         }
     }, 
 
@@ -190,7 +206,7 @@ export const UIHome = {
     // 4. TOGGLE SWITCH & GRIDS
     // ============================================================
 
-    _renderToggleSwitch(container) {
+    _renderToggleSwitch(slot) {
         const wrapper = document.createElement('div');
         wrapper.className = "flex justify-center mb-6";
         
@@ -208,9 +224,9 @@ export const UIHome = {
             </div>
         `;
         
-        container.appendChild(wrapper);
+        slot.appendChild(wrapper);
 
-        // Bind Logic
+        // Bind Logic (Using document selector since grids are in DOM now)
         setTimeout(() => {
             const btnGS = document.getElementById('btn-gs1');
             const btnCSAT = document.getElementById('btn-csat');
@@ -218,62 +234,61 @@ export const UIHome = {
             const gridGS = document.getElementById('grid-gs1');
             const gridCSAT = document.getElementById('grid-csat');
 
+            if (!btnGS || !btnCSAT || !gridGS) return; // Safety
+
             btnGS.onclick = () => {
-                // Move Pill Left
                 pill.style.transform = 'translateX(0)';
-                // Text Styling
                 btnGS.style.opacity = '1';
                 btnGS.classList.add('text-blue-600');
                 btnCSAT.style.opacity = '0.5';
                 btnCSAT.classList.remove('text-blue-600');
-                // View Switch
+                
                 gridGS.classList.remove('hidden');
                 gridGS.classList.add('animate-slide-up');
                 gridCSAT.classList.add('hidden');
             };
 
             btnCSAT.onclick = () => {
-                // Move Pill Right
-                pill.style.transform = 'translateX(100%)'; // Moves full width of pill
-                // Text Styling
+                pill.style.transform = 'translateX(100%)';
                 btnCSAT.style.opacity = '1';
                 btnCSAT.classList.add('text-blue-600');
                 btnGS.style.opacity = '0.5';
                 btnGS.classList.remove('text-blue-600');
-                // View Switch
+                
                 gridCSAT.classList.remove('hidden');
                 gridCSAT.classList.add('animate-slide-up');
                 gridGS.classList.add('hidden');
             };
-        }, 0);
+        }, 50);
     },
 
-    async _renderSubjectGrids(container) {
+    _renderSubjectGrids(slot) {
         // --- GRID 1: GS Paper I ---
         const gridGS = document.createElement('div');
         gridGS.id = 'grid-gs1';
-        gridGS.className = "grid grid-cols-2 gap-4 pb-20"; // Premium Gap
+        gridGS.className = "grid grid-cols-2 gap-4 pb-20"; 
         
-        if (CONFIG.subjectsGS1) {
+        // 🛡️ SAFETY: Check if Config exists
+        if (CONFIG && CONFIG.subjectsGS1) {
             CONFIG.subjectsGS1.forEach((sub, index) => {
                 const tile = this._createSubjectTile(sub, index);
                 gridGS.appendChild(tile);
             });
         }
-        container.appendChild(gridGS);
+        slot.appendChild(gridGS);
 
         // --- GRID 2: CSAT (Hidden by default) ---
         const gridCSAT = document.createElement('div');
         gridCSAT.id = 'grid-csat';
         gridCSAT.className = "hidden grid grid-cols-2 gap-4 pb-20"; 
         
-        if (CONFIG.subjectsCSAT) {
+        if (CONFIG && CONFIG.subjectsCSAT) {
             CONFIG.subjectsCSAT.forEach((sub, index) => {
                 const tile = this._createSubjectTile(sub, index); 
                 gridCSAT.appendChild(tile);
             });
         }
-        container.appendChild(gridCSAT);
+        slot.appendChild(gridCSAT);
     },
 
     // ============================================================
@@ -339,4 +354,3 @@ export const UIHome = {
 };
 
 window.UIHome = UIHome;
-
