@@ -1,6 +1,6 @@
 /**
  * UI-ARCADE (THE BRAIN GYM)
- * Version: 2.0.0
+ * Version: 2.1.0 (Fixed Canvas Cleanup & Memory Leaks)
  * Path: assets/js/ui/views/ui-arcade.js
  * Responsibilities:
  * 1. Renders the Arcade Dashboard (Game Selection).
@@ -43,6 +43,12 @@ export const UIArcade = {
 
         // 3. Bind Dashboard Events
         // (Delegated listeners for game selection)
+    },
+
+    // 🛡️ FIX: Added Cleanup Hook to prevent Ghosting
+    onUnmount() {
+        console.log("🎮 UIArcade: Unmounting & Cleaning up...");
+        this._cleanupGame();
     },
 
     /**
@@ -101,6 +107,10 @@ export const UIArcade = {
 
     launchGame(gameId) {
         console.log(`🎮 UIArcade: Launching ${gameId}...`);
+        
+        // Ensure clean state before starting
+        this._cleanupGame();
+
         this.state.activeGameId = gameId;
         this.state.score = 0;
         this.state.isPlaying = true;
@@ -128,10 +138,8 @@ export const UIArcade = {
     },
 
     quitGame() {
-        // Stop Loops
-        this.state.isPlaying = false;
-        if (this.state.interval) clearInterval(this.state.interval);
-        if (this.state.timer) clearTimeout(this.state.timer);
+        // Stop Loops and Clear Canvas
+        this._cleanupGame();
 
         // Restore UI
         if (window.UIHeader) UIHeader.toggle(true);
@@ -139,6 +147,28 @@ export const UIArcade = {
         // Go back to Menu
         const app = document.getElementById('app-container');
         this.render(app);
+    },
+
+    // 🛡️ FIX: Internal Cleanup Helper
+    _cleanupGame() {
+        this.state.isPlaying = false;
+        
+        if (this.state.interval) {
+            clearInterval(this.state.interval);
+            this.state.interval = null;
+        }
+        if (this.state.timer) {
+            clearTimeout(this.state.timer);
+            this.state.timer = null;
+        }
+
+        // Canvas Cleanup
+        const canvas = document.getElementById('game-canvas');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        this.state.ctx = null;
     },
 
     // ============================================================
@@ -618,5 +648,4 @@ export const UIArcade = {
 
 // Global Exposure
 window.UIArcade = UIArcade;
-
 
