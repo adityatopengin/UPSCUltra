@@ -1,6 +1,6 @@
 /**
  * QUIZ ENGINE (THE BRAIN)
- * Version: 2.5.0 (Fixed Scoring & Telemetry)
+ * Version: 2.5.0 (Patched: Persistence + Logic Fixes)
  * Path: assets/js/engine/quiz-engine.js
  */
 
@@ -20,7 +20,7 @@ export const Engine = {
         answers: {}, 
         bookmarks: new Set(),
         currentIndex: 0,
-        // ✅ TELEMETRY ADDED
+        // 🛡️ FIX: Added Telemetry State [Fix #4]
         telemetry: {
             impulseClicks: 0,
             switches: {},
@@ -37,23 +37,40 @@ export const Engine = {
     async startSession(subjectId) {
         console.log(`🧠 Engine: Starting Session for ${subjectId}`);
         
+        // 🛡️ FIX: Check for Orphan Session (Persistence)
+        const savedState = localStorage.getItem('quiz_state');
+        if (savedState) {
+            try {
+                const parsed = JSON.parse(savedState);
+                if (parsed.active && parsed.subjectId === subjectId) {
+                    console.log("🧠 Engine: Restoring Orphan Session...");
+                    this.state = {
+                        ...parsed,
+                        bookmarks: new Set(parsed.bookmarks), // Restore Set
+                        // Ensure telemetry exists if restoring old state
+                        telemetry: parsed.telemetry || { impulseClicks: 0, switches: {}, timePerQuestion: {}, questionStartTimes: {} }
+                    };
+                    this._startTimer();
+                    this._emit('SESSION_START');
+                    return;
+                }
+            } catch(e) { localStorage.removeItem('quiz_state'); }
+        }
+
+        // 1. Clean Slate
         this.terminateSession(); 
 
+        // 2. Setup New State
         this.state.subjectId = subjectId;
         this.state.active = true;
         this.state.startTime = Date.now();
         this.state.currentIndex = 0;
         this.state.answers = {};
         this.state.bookmarks = new Set();
-        
         // Reset Telemetry
-        this.state.telemetry = {
-            impulseClicks: 0,
-            switches: {},
-            timePerQuestion: {},
-            questionStartTimes: {}
-        };
+        this.state.telemetry = { impulseClicks: 0, switches: {}, timePerQuestion: {}, questionStartTimes: {} };
 
+        // 3. Load Real Questions
         this.state.questions = await this._fetchQuestions(subjectId);
         
         if (!this.state.questions || this.state.questions.length === 0) {
@@ -63,23 +80,26 @@ export const Engine = {
             throw new Error("QUIZ_ABORT_NO_DATA"); 
         }
 
+        // 4. Set Timer
         const duration = this.state.questions.length * 2 * 60; 
         this.state.totalDuration = duration;
         this.state.timeLeft = duration;
 
-        // Start timing the first question
-        this.state.telemetry.questionStartTimes[0] = Date.now();
-
+        // 5. Start
         this._startTimer();
+        this._saveState(); // Initial Save
         this._emit('SESSION_START');
     },
-
+     
     async submitQuiz() {
         if (!this.state.active) return;
 
         console.log("🧠 Engine: Submitting Quiz...");
         this._stopTimer();
         this.state.active = false;
+        
+        // 🛡️ FIX: Clear local persistence on explicit finish
+        localStorage.removeItem('quiz_state');
 
         const result = this._calculateResult();
 
@@ -91,6 +111,7 @@ export const Engine = {
             if (window.Main && window.Main.handleQuizCompletion) {
                 window.Main.handleQuizCompletion(result);
             }
+
         } catch (e) {
             console.error("Engine: Save Failed", e);
             if (window.Main && window.Main.handleQuizCompletion) {
@@ -102,6 +123,7 @@ export const Engine = {
     terminateSession() {
         this._stopTimer();
         this.state.active = false;
+        localStorage.removeItem('quiz_state');
     },
 
     // ============================================================
@@ -111,22 +133,31 @@ export const Engine = {
     submitAnswer(questionId, optionIndex) {
         if (!this.state.active) return;
 
-        // ✅ TELEMETRY: Track Switches
-        const prevAnswer = this.state.answers[this.state.currentIndex];
+        // 🛡️ FIX: Telemetry - Track Switches [Fix #4]
+        const currentIndex = this.state.currentIndex;
+        const prevAnswer = this.state.answers[currentIndex]; // Use index as key
+        
         if (prevAnswer !== undefined && prevAnswer !== optionIndex) {
-            if (!this.state.telemetry.switches[this.state.currentIndex]) {
-                this.state.telemetry.switches[this.state.currentIndex] = 0;
+             if (!this.state.telemetry.switches[currentIndex]) {
+                this.state.telemetry.switches[currentIndex] = 0;
             }
-            this.state.telemetry.switches[this.state.currentIndex]++;
+            this.state.telemetry.switches[currentIndex]++;
         }
 
-        // ✅ TELEMETRY: Track Time
+        // 🛡️ FIX: Telemetry - Track Time
         const now = Date.now();
-        const start = this.state.telemetry.questionStartTimes[this.state.currentIndex] || now;
-        this.state.telemetry.timePerQuestion[this.state.currentIndex] = now - start;
+        if (!this.state.telemetry.questionStartTimes[currentIndex]) {
+            this.state.telemetry.questionStartTimes[currentIndex] = now;
+        } else {
+             const timeSpent = now - this.state.telemetry.questionStartTimes[currentIndex];
+             this.state.telemetry.timePerQuestion[currentIndex] = timeSpent;
+        }
 
-        this.state.answers[this.state.currentIndex] = optionIndex; // Use Index as key for consistency
-        this._emit('ANSWER_SAVED', { questionId: this.state.currentIndex, optionIndex });
+        // Save Answer (Using Index Key consistent with _calculateResult)
+        this.state.answers[currentIndex] = optionIndex;
+        
+        this._saveState(); // Persistence
+        this._emit('ANSWER_SAVED', { questionId: currentIndex, optionIndex });
     },
 
     toggleBookmark(questionId) {
@@ -135,22 +166,23 @@ export const Engine = {
         } else {
             this.state.bookmarks.add(questionId);
         }
+        this._saveState();
         this._emit('BOOKMARK_TOGGLED', { questionId });
     },
 
     nextQuestion() {
         if (this.state.currentIndex < this.state.questions.length - 1) {
-            // ✅ TELEMETRY: Check Impulse
-            const now = Date.now();
-            const start = this.state.telemetry.questionStartTimes[this.state.currentIndex] || now;
-            if ((now - start) < 1500) {
+            // 🛡️ FIX: Telemetry - Track Impulse [Fix #4]
+            const currentIndex = this.state.currentIndex;
+            const startTime = this.state.telemetry.questionStartTimes[currentIndex] || Date.now();
+            const timeOnQuestion = Date.now() - startTime;
+            
+            if (timeOnQuestion < 1500) { // < 1.5s
                 this.state.telemetry.impulseClicks++;
             }
 
             this.state.currentIndex++;
-            // Start timing next question
-            this.state.telemetry.questionStartTimes[this.state.currentIndex] = Date.now();
-            
+            this._saveState();
             this._emit('NAVIGATE');
         }
     },
@@ -158,7 +190,7 @@ export const Engine = {
     prevQuestion() {
         if (this.state.currentIndex > 0) {
             this.state.currentIndex--;
-            this.state.telemetry.questionStartTimes[this.state.currentIndex] = Date.now();
+            this._saveState();
             this._emit('NAVIGATE');
         }
     },
@@ -166,7 +198,7 @@ export const Engine = {
     goToQuestion(index) {
         if (index >= 0 && index < this.state.questions.length) {
             this.state.currentIndex = index;
-            this.state.telemetry.questionStartTimes[this.state.currentIndex] = Date.now();
+            this._saveState();
             this._emit('NAVIGATE');
         }
     },
@@ -175,13 +207,26 @@ export const Engine = {
     // 4. INTERNAL UTILITIES
     // ============================================================
 
+    _saveState() {
+        // Convert Set to Array for JSON
+        const storageObj = {
+            ...this.state,
+            bookmarks: Array.from(this.state.bookmarks)
+        };
+        localStorage.setItem('quiz_state', JSON.stringify(storageObj));
+    },
+
     _startTimer() {
         this._stopTimer(); 
         this.timerInterval = setInterval(() => {
             this.state.timeLeft--;
+            // Only autosave every 10s to save IO
+            if (this.state.timeLeft % 10 === 0) this._saveState();
+
             window.dispatchEvent(new CustomEvent('quiz-tick', { 
                 detail: { timeLeft: this.state.timeLeft } 
             }));
+
             if (this.state.timeLeft <= 0) {
                 this.submitQuiz(); 
             }
@@ -201,19 +246,19 @@ export const Engine = {
         let score = 0;
         const total = this.state.questions.length;
 
-        // ✅ FIXED SCORING LOGIC
+        // 🛡️ FIX: Use Index for answers [Fix #1]
         this.state.questions.forEach((q, idx) => {
-            const userAnswer = this.state.answers[idx]; // Access by Index
+            const userAnswer = this.state.answers[idx]; // Changed from q.id to idx
             
             if (userAnswer !== undefined) {
                 if (userAnswer === q.correctAnswer) {
                     correct++;
                     score += 2;
-                    q.isCorrect = true; // ✅ Critical for Academic Engine
+                    q.isCorrect = true; // 🛡️ FIX: Inject Flag for Academic Engine [Fix #3]
                 } else {
                     wrong++;
                     score -= 0.66;
-                    q.isCorrect = false;
+                    q.isCorrect = false; // Inject Flag
                 }
             } else {
                 q.isCorrect = false;
@@ -236,7 +281,7 @@ export const Engine = {
             accuracy: correct > 0 ? Math.round((correct / (correct + wrong)) * 100) : 0,
             totalDuration: this.state.totalDuration - this.state.timeLeft,
             questions: this.state.questions,
-            // ✅ TELEMETRY INCLUDED
+            // 🛡️ FIX: Return Telemetry [Fix #4]
             telemetry: {
                 impulseClicks: this.state.telemetry.impulseClicks,
                 switches: this.state.telemetry.switches,
@@ -255,23 +300,33 @@ export const Engine = {
         try {
             const subjectId = result.subject;
             const currentEntry = await DB.get('academic_state', subjectId) || { subjectId, mastery: 0, attempts: 0 };
+            
             const newMastery = ((currentEntry.mastery * currentEntry.attempts) + result.score) / (currentEntry.attempts + 1);
+            
             currentEntry.mastery = newMastery;
             currentEntry.attempts += 1;
             currentEntry.lastStudied = Date.now();
+
             await DB.put('academic_state', currentEntry);
+            
         } catch (e) {
             console.warn("Engine: Failed to update mastery stats (non-critical)", e);
         }
     },
 
+    // ============================================================
+    // 6. REAL DATA FETCHING
+    // ============================================================
+
     async _fetchQuestions(subjectId) {
         try {
             const keys = await DB.getRandomKeys('questions', 'subject', subjectId, 15);
             if (!keys || keys.length === 0) return [];
+
             const promises = keys.map(key => DB.get('questions', key));
             const questions = await Promise.all(promises);
             return questions.map(q => this._randomizeOptions(q));
+
         } catch(e) {
             console.error("Engine: DB Fetch Failed", e);
             return [];
@@ -281,10 +336,12 @@ export const Engine = {
     _randomizeOptions(question) {
         const q = JSON.parse(JSON.stringify(question));
         
-        // Handle both old and new formats
+        // 🛡️ FIX: Handle both naming conventions (Legacy Support) [Fix #5]
         const originalCorrectIndex = q.correctOption !== undefined ? q.correctOption : q.correctAnswer;
 
         let optionsWithIndex = q.options.map((text, idx) => ({ text, originalIndex: idx }));
+        
+        // Shuffle
         optionsWithIndex.sort(() => Math.random() - 0.5);
         
         const newCorrectIndex = optionsWithIndex.findIndex(o => o.originalIndex === originalCorrectIndex);
@@ -292,10 +349,10 @@ export const Engine = {
         return {
             ...q,
             options: optionsWithIndex.map(o => o.text),
-            correctAnswer: newCorrectIndex, // ✅ Always use correctAnswer
-            correctOption: undefined // Clear old field
+            correctAnswer: newCorrectIndex,
+            // 🛡️ FIX: Explicitly remove old field to prevent confusion
+            correctOption: undefined 
         };
     }
 };
-
 
