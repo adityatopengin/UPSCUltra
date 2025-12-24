@@ -1,6 +1,6 @@
 /**
  * UI-RESULTS (THE REPORT CARD)
- * Version: 3.3.0 (Duplicate Navigation Prevention)
+ * Version: 3.4.0 (Patched: Grand Mock Support)
  * Path: assets/js/ui/views/ui-results.js
  */
 
@@ -228,6 +228,10 @@ export const UIResults = {
     },
 
     _getSubjectConfig(id) {
+        // 🛡️ FIX: Handle Mock IDs explicitly
+        if (id === 'mock_gs1') return { name: 'GS Prelims Mock', color: 'amber', icon: 'trophy' };
+        if (id === 'mock_csat') return { name: 'CSAT Mock', color: 'purple', icon: 'flag-checkered' };
+
         const gs1 = CONFIG.subjectsGS1 || [];
         const csat = CONFIG.subjectsCSAT || [];
         return [...gs1, ...csat].find(s => s.id === id) || { name: 'Unknown', color: 'slate', icon: 'question' };
