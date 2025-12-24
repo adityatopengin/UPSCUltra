@@ -1,6 +1,6 @@
 /**
  * ORACLE WORKER (The Background Brain)
- * Version: 2.1.0 (Patched: CSAT Fix + Z-Score Clamp)
+ * Version: 2.2.0 (Patched: Input Adapter + Bell Curve Gen)
  * Path: assets/js/workers/oracle.worker.js
  */
 
@@ -9,7 +9,16 @@
 // ============================================================
 
 self.onmessage = function(e) {
-    const { command, data, config } = e.data;
+    let { command, data, config, history } = e.data;
+
+    // 🛡️ PATCH: Adapter for Legacy Input (History Array)
+    // If the app sends raw 'history', we must transform it into the 'data' structure
+    // expected by the Ensemble Engine below.
+    if (history && Array.isArray(history)) {
+        command = 'RUN_ENSEMBLE';
+        config = config || { simulationRuns: 500 };
+        data = _transformHistoryToData(history);
+    }
 
     // A. HEALTH CHECK
     if (command === 'PING') {
@@ -22,9 +31,13 @@ self.onmessage = function(e) {
         try {
             const result = runEnsembleSimulation(data, config);
             
+            // 🛡️ PATCH: Flatten structure for UI compatibility
             self.postMessage({
-                status: 'SUCCESS',
-                result: result
+                score: result.score,
+                range: result.range,
+                confidence: result.confidence,
+                flags: result.flags,
+                bellCurve: result.bellCurve // Now included
             });
         } catch (err) {
             console.error("🔮 OracleWorker Error:", err);
@@ -51,7 +64,7 @@ function runEnsembleSimulation(telemetry, config) {
     const patternResult = runPatternRecognition(telemetry, lhsResult.averageScore);
 
     // 4. THE STACKING (Weighted Average)
-    const weights = config.models || { 
+    const weights = (config && config.models) ? config.models : { 
         monteCarlo: { weight: 0.5 }, 
         bayesian: { weight: 0.3 }, 
         xgboost: { weight: 0.2 } 
@@ -65,11 +78,16 @@ function runEnsembleSimulation(telemetry, config) {
         (patternResult.score    * weights.xgboost.weight)
     ) / totalW;
 
+    // 🛡️ PATCH: Generate Bell Curve Data for UI
+    const stdDev = (lhsResult.maxScore - lhsResult.minScore) / 4;
+    const bellCurve = _generateBellCurvePoints(finalScore, stdDev);
+
     return {
         score: Math.round(finalScore),
         range: { min: lhsResult.minScore, max: lhsResult.maxScore },
         confidence: bayesianResult.confidence,
         flags: patternResult.flags,
+        bellCurve: bellCurve, // Added
         breakdown: {
             mc: Math.round(lhsResult.averageScore),
             bayesian: Math.round(bayesianResult.score),
@@ -87,16 +105,23 @@ function runLatinHypercube(data, runs) {
     let minScore = 300; 
     let maxScore = 0;   
 
+    // 🛡️ PATCH: Safety check for empty data
+    if (!data.academic) return { averageScore: 0, minScore: 0, maxScore: 0 };
+
     const subjects = Object.keys(data.academic);
 
     const subjectPotentials = subjects.map(subId => {
         const sub = data.academic[subId];
         
-        if (!sub || typeof sub.mastery !== 'number') return null;
+        // 🛡️ PATCH: Defaulting weights if missing
+        const weight = sub.weight || 0.15;
+        const mastery = sub.mastery || 0;
+
+        if (!sub) return null;
 
         return {
             id: subId,
-            basePoints: 2 * sub.weight * sub.mastery, 
+            basePoints: 2 * weight * mastery, 
             volatility: (1.0 - (sub.stability || 0.5)) + 0.1 
         };
     }).filter(s => s !== null);
@@ -131,8 +156,8 @@ function runLatinHypercube(data, runs) {
     }
 
     return {
-        averageScore: totalSimulatedScore / runs,
-        minScore: Math.floor(minScore),
+        averageScore: runs > 0 ? totalSimulatedScore / runs : 0,
+        minScore: Math.floor(minScore === 300 ? 0 : minScore),
         maxScore: Math.ceil(maxScore)
     };
 }
@@ -201,6 +226,7 @@ function runPatternRecognition(data, currentScore) {
     // 🛡️ FIX: Use correct field name (.score) with fallback
     ['csat_quant', 'csat_logic', 'csat_rc'].forEach(id => {
         if (ac[id]) {
+            // Check for explicit score or fallback to mastery
             const subject_score = (ac[id].score !== undefined) ? ac[id].score : (ac[id].mastery || 0);
             csatScore += (subject_score / 100) * 66; 
             hasCsatData = true;
@@ -218,7 +244,7 @@ function runPatternRecognition(data, currentScore) {
 }
 
 // ============================================================
-// 6. MATH UTILITIES
+// 6. MATH UTILITIES & ADAPTERS
 // ============================================================
 
 /**
@@ -234,5 +260,71 @@ function _boxMullerTransform(u1) {
     
     // 🛡️ FIX: Clamp to realistic range (-3.5 to +3.5)
     return Math.max(-3.5, Math.min(3.5, z));
+}
+
+/**
+ * 🛡️ PATCH: Bell Curve Generator
+ * Required for UI Visualization
+ */
+function _generateBellCurvePoints(mean, stdDev) {
+    const points = [];
+    const start = Math.max(0, mean - (3 * stdDev));
+    const end = Math.min(200, mean + (3 * stdDev));
+    const step = (end - start) / 20;
+
+    if (step <= 0) return []; 
+
+    for (let x = start; x <= end; x += step) {
+        const exponent = -0.5 * Math.pow((x - mean) / stdDev, 2);
+        const y = Math.exp(exponent);
+        points.push({ x: Math.round(x), y: parseFloat(y.toFixed(3)) });
+    }
+    return points;
+}
+
+/**
+ * 🛡️ PATCH: Data Transformer
+ * Converts flat History Array -> Structured Data for Ensemble
+ */
+function _transformHistoryToData(history) {
+    const academic = {};
+    const behavioral = { 
+        riskMod: 1.0, 
+        sillyMistakeMod: 1.0, 
+        panicMod: 1.0, 
+        fatigueMod: 1.0 
+    };
+
+    if (history.length === 0) return { academic, behavioral };
+
+    // 1. Group by Subject
+    history.forEach(h => {
+        const sub = h.subject || 'unknown';
+        if (!academic[sub]) {
+            academic[sub] = { 
+                mastery: 0, 
+                stability: 0.5, 
+                weight: 15, // Approximate weight
+                scores: [] 
+            };
+        }
+        // Normalize score to 0-100 for internal calc
+        const max = h.totalMarks || 200;
+        const normScore = (h.score / max) * 100;
+        academic[sub].scores.push(normScore);
+    });
+
+    // 2. Calculate Stats
+    Object.keys(academic).forEach(key => {
+        const sub = academic[key];
+        const sum = sub.scores.reduce((a, b) => a + b, 0);
+        sub.mastery = sum / sub.scores.length; // Average
+        
+        // Simple Stability: 1.0 if variance is low
+        const variance = sub.scores.length > 1 ? 5 : 20; 
+        sub.stability = Math.max(0.1, 1.0 - (variance/100));
+    });
+
+    return { academic, behavioral };
 }
 
