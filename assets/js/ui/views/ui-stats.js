@@ -1,16 +1,18 @@
 /**
  * UI-STATS (THE ANALYTICS HUB)
- * Version: 2.2.0 (Full Logic Restored + Memory Fix)
+ * Version: 2.4.0 (Patched: Percentage Normalization)
  * Path: assets/js/ui/views/ui-stats.js
  * Responsibilities:
  * 1. Visualizes Academic & Behavioral Data.
  * 2. Dynamically loads Chart.js (performance optimization).
  * 3. Implements the "Tri-View" Strategy (Overview, Psych, Timeline).
+ * 4. Fetches raw history from DB for accurate trend analysis.
  */
 
 import { BehavioralEngine } from '../../engine/behavioral-engine.js';
 import { AcademicEngine } from '../../engine/academic-engine.js';
 import { UI } from '../ui-manager.js';
+import { DB } from '../../services/db.js';
 
 export const UIStats = {
     // ============================================================
@@ -20,6 +22,7 @@ export const UIStats = {
         activeTab: 'overview', // 'overview' | 'psych' | 'timeline'
         chartLibLoaded: false,
         charts: {}, // Store instances to destroy them properly
+        historyData: [] // Cache for history records
     },
 
     config: {
@@ -42,36 +45,38 @@ export const UIStats = {
     async render(container) {
         console.log("📈 UIStats: Initializing Analytics...");
         container.innerHTML = '';
-        // REFACTOR: Removed bg-slate-900. Increased padding to pb-40.
         container.className = 'view-container pb-40 min-h-screen';
 
-        // 1. Show Loading Skeleton first
+        // 1. Show Loading Skeleton
         container.innerHTML = this._getSkeletonTemplate();
 
-        // 2. Load Chart.js if not present
-        if (!this.state.chartLibLoaded) {
-            try {
-                await this._loadChartJs();
-                this.state.chartLibLoaded = true;
-            } catch (e) {
-                if (window.UI) UI.showToast("Failed to load Analytics Engine", "error");
-                console.error(e);
-                return;
-            }
+        // 2. Load Dependencies in Parallel (Chart.js + DB Data)
+        try {
+            const [_, history] = await Promise.all([
+                this._loadChartJs(),
+                DB.getAll('history')
+            ]);
+            
+            this.state.chartLibLoaded = true;
+            this.state.historyData = history || []; 
+            
+        } catch (e) {
+            if (window.UI) UI.showToast("Failed to load Analytics Engine", "error");
+            console.error(e);
+            return;
         }
 
         // 3. Render Full UI
         this._renderShell(container);
     },
 
-    // 🛡️ FIX: Memory Leak Prevention
-    // Called by UI Manager when navigating AWAY from this view
+    // Memory Leak Prevention
     onUnmount() {
         console.log("📈 UIStats: Cleaning up charts...");
         this._destroyAllCharts();
+        this.state.historyData = [];
     },
 
-    // 🛡️ FIX: Centralized cleanup helper
     _destroyAllCharts() {
         Object.keys(this.state.charts).forEach(key => {
             if (this.state.charts[key]) {
@@ -82,22 +87,15 @@ export const UIStats = {
         this.state.charts = {};
     },
 
-    /**
-     * Dynamically injects Chart.js script tag
-     */
     _loadChartJs() {
         return new Promise((resolve, reject) => {
             if (window.Chart) {
                 resolve();
                 return;
             }
-            
-            console.log("📈 UIStats: Fetching Chart.js...");
             const script = document.createElement('script');
             script.src = this.config.chartJsUrl;
             script.onload = () => {
-                console.log("📈 UIStats: Chart.js Ready.");
-                // Register defaults for Premium Look
                 Chart.defaults.color = this.config.colors.text;
                 Chart.defaults.font.family = "'Inter', sans-serif";
                 Chart.defaults.scale.grid.color = this.config.colors.grid;
@@ -113,8 +111,6 @@ export const UIStats = {
     // ============================================================
 
     _renderShell(container) {
-        // REFACTOR: Removed bg-slate-900/backdrop-blur/borders from header.
-        // Using semantic .premium-text-head and .premium-panel
         container.innerHTML = `
             <header class="sticky top-0 z-30 px-6 pt-12 pb-4">
                 <div class="flex items-center justify-between mb-6">
@@ -147,7 +143,6 @@ export const UIStats = {
                 </main>
         `;
 
-        // Load initial tab
         this.switchTab(this.state.activeTab);
     },
 
@@ -163,7 +158,6 @@ export const UIStats = {
     },
 
     _calculateGlobalRank() {
-        // Uses AcademicEngine to calculate rank based on mastery
         const avg = (AcademicEngine.getGlobalMastery) ? AcademicEngine.getGlobalMastery() : 0;
         if (avg > 90) return 'ELITE';
         if (avg > 75) return 'VETERAN';
@@ -174,7 +168,6 @@ export const UIStats = {
     switchTab(tabName) {
         this.state.activeTab = tabName;
         
-        // Update Buttons
         ['overview', 'psych', 'timeline'].forEach(t => {
             const btn = document.getElementById(`tab-${t}`);
             if (btn) {
@@ -186,15 +179,11 @@ export const UIStats = {
             }
         });
 
-        // Update Content
         const content = document.getElementById('stats-content');
         if (content) {
-            content.innerHTML = ''; // Clear old content
-            
-            // 🛡️ FIX: Explicitly destroy old charts when switching tabs
+            content.innerHTML = '';
             this._destroyAllCharts();
 
-            // Render Specific View
             if (tabName === 'overview') this._renderOverview(content);
             else if (tabName === 'psych') this._renderPsych(content);
             else if (tabName === 'timeline') this._renderTimeline(content);
@@ -206,15 +195,10 @@ export const UIStats = {
     // ============================================================
 
     _renderOverview(parent) {
-        // 1. Fetch Data
-        // Fallback to empty object if Engine not ready or has no data
-        // We check AcademicEngine.state.mastery directly or fallback to empty
         const subjects = (AcademicEngine.state && AcademicEngine.state.mastery) ? AcademicEngine.state.mastery : {}; 
         const labels = Object.keys(subjects).map(s => s.charAt(0).toUpperCase() + s.slice(1));
-        const dataPoints = Object.values(subjects).map(s => s.score || 0);
+        const dataPoints = Object.values(subjects).map(s => s.mastery || s.score || 0);
 
-        // 2. Inject Layout
-        // REFACTOR: Replaced glass-card/glass-panel with premium-card/premium-panel
         parent.innerHTML = `
             <div class="premium-card p-4 mb-6 relative overflow-hidden">
                 <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
@@ -242,8 +226,7 @@ export const UIStats = {
                         </div>
                     </div>
                     
-                    <div id="decay-list" class="space-y-4">
-                        </div>
+                    <div id="decay-list" class="space-y-4"></div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -259,7 +242,6 @@ export const UIStats = {
             </div>
         `;
 
-        // 3. Init Chart (Delay slightly to ensure DOM is ready)
         requestAnimationFrame(() => {
             this._initRadarChart(labels, dataPoints);
             this._renderDecayList(subjects);
@@ -270,14 +252,12 @@ export const UIStats = {
         const ctx = document.getElementById('chart-radar');
         if (!ctx) return;
 
-        // Create Gradient Fill
         const gradient = ctx.getContext('2d').createRadialGradient(150, 150, 0, 150, 150, 150);
-        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)'); // Blue center
-        gradient.addColorStop(1, 'rgba(139, 92, 246, 0.1)'); // Purple fade
+        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
+        gradient.addColorStop(1, 'rgba(139, 92, 246, 0.1)');
 
-        // Default data if empty (Visual Placeholder)
         const safeLabels = labels.length ? labels : ['Polity', 'History', 'Geog', 'Econ', 'Env'];
-        const safeData = data.length ? data : [65, 59, 90, 81, 56];
+        const safeData = data.length ? data : [0, 0, 0, 0, 0];
 
         this.state.charts.radar = new Chart(ctx, {
             type: 'radar',
@@ -287,7 +267,7 @@ export const UIStats = {
                     label: 'Current Mastery',
                     data: safeData,
                     backgroundColor: gradient,
-                    borderColor: '#60a5fa', // Blue-400
+                    borderColor: '#60a5fa',
                     borderWidth: 2,
                     pointBackgroundColor: '#fff',
                     pointBorderColor: '#3b82f6',
@@ -305,24 +285,17 @@ export const UIStats = {
                         angleLines: { color: 'rgba(255,255,255,0.05)' },
                         grid: { color: 'rgba(255,255,255,0.05)' },
                         pointLabels: {
-                            color: '#cbd5e1', // Slate-300
+                            color: '#cbd5e1',
                             font: { size: 10, family: 'Inter', weight: 'bold' }
                         },
-                        ticks: { display: false } // Hide numbers on axis for cleaner look
+                        ticks: { display: false }
                     }
                 },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
                         backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                        titleColor: '#fff',
-                        bodyColor: '#94a3b8',
-                        padding: 10,
-                        borderColor: 'rgba(255,255,255,0.1)',
-                        borderWidth: 1,
-                        callbacks: {
-                            label: (ctx) => `Mastery: ${ctx.raw}%`
-                        }
+                        callbacks: { label: (ctx) => `Mastery: ${ctx.raw}%` }
                     }
                 }
             }
@@ -333,11 +306,9 @@ export const UIStats = {
         const container = document.getElementById('decay-list');
         if (!container) return;
 
-        // Sort subjects by "Urgency" (Low Score + Old Timestamp)
-        // For MVP, we just take the lowest mastery
         const sorted = Object.entries(subjects)
-            .sort(([, a], [, b]) => (a.score || 0) - (b.score || 0))
-            .slice(0, 3); // Top 3 worst
+            .sort(([, a], [, b]) => (a.mastery || 0) - (b.mastery || 0))
+            .slice(0, 3);
 
         if (sorted.length === 0) {
             container.innerHTML = `<div class="text-xs opacity-50 italic text-center py-2">No data yet. Start studying!</div>`;
@@ -346,7 +317,7 @@ export const UIStats = {
 
         container.innerHTML = sorted.map(([key, data]) => {
             const name = key.charAt(0).toUpperCase() + key.slice(1);
-            const score = Math.round(data.score || 0);
+            const score = Math.round(data.mastery || 0);
             
             return `
             <div class="flex items-center gap-3">
@@ -372,7 +343,6 @@ export const UIStats = {
     // ============================================================
 
     _renderPsych(parent) {
-        // 1. Fetch Data
         const p = BehavioralEngine.profile || {};
         const labels = ['Focus', 'Calm', 'Speed', 'Precision', 'Risk', 'Endurance', 'Flexibility'];
         const dataValues = [
@@ -385,8 +355,6 @@ export const UIStats = {
             (p.flexibility?.value || 0.5) * 100
         ];
 
-        // 2. Inject Layout
-        // REFACTOR: Replaced glass-card/glass-panel with premium-card/premium-panel
         parent.innerHTML = `
             <div class="premium-card p-4 mb-6">
                 <div class="flex justify-between items-center mb-4 px-2">
@@ -396,7 +364,6 @@ export const UIStats = {
                     </div>
                     <i class="fa-solid fa-brain text-purple-400"></i>
                 </div>
-                
                 <div class="relative h-[280px] w-full flex items-center justify-center">
                     <canvas id="chart-psych"></canvas>
                 </div>
@@ -429,7 +396,7 @@ export const UIStats = {
             <div class="premium-card p-4">
                 <div class="mb-4">
                     <h3 class="text-xs font-bold uppercase">Focus Retention</h3>
-                    <p class="text-[10px] opacity-50">Accuracy drop-off over quiz duration</p>
+                    <p class="text-[10px] opacity-50">Estimated accuracy drop-off (Derived from Endurance)</p>
                 </div>
                 <div class="h-[150px] w-full">
                     <canvas id="chart-stamina"></canvas>
@@ -437,10 +404,9 @@ export const UIStats = {
             </div>
         `;
 
-        // 3. Init Charts
         requestAnimationFrame(() => {
             this._initPsychChart(labels, dataValues);
-            this._initStaminaChart(); // Uses mock curve for MVP
+            this._initStaminaChart(p.endurance?.value || 0.5); 
         });
     },
 
@@ -455,15 +421,15 @@ export const UIStats = {
                 datasets: [{
                     data: data,
                     backgroundColor: [
-                        'rgba(59, 130, 246, 0.5)',  // Blue (Focus)
-                        'rgba(16, 185, 129, 0.5)',  // Emerald (Calm)
-                        'rgba(245, 158, 11, 0.5)',  // Amber (Speed)
-                        'rgba(139, 92, 246, 0.5)',  // Purple (Precision)
-                        'rgba(244, 63, 94, 0.5)',   // Rose (Risk)
-                        'rgba(14, 165, 233, 0.5)',  // Sky (Endurance)
-                        'rgba(236, 72, 153, 0.5)'   // Pink (Flexibility)
+                        'rgba(59, 130, 246, 0.5)',
+                        'rgba(16, 185, 129, 0.5)',
+                        'rgba(245, 158, 11, 0.5)',
+                        'rgba(139, 92, 246, 0.5)',
+                        'rgba(244, 63, 94, 0.5)',
+                        'rgba(14, 165, 233, 0.5)',
+                        'rgba(236, 72, 153, 0.5)'
                     ],
-                    borderWidth: 0, // Cleaner look
+                    borderWidth: 0,
                     hoverOffset: 10
                 }]
             },
@@ -479,24 +445,24 @@ export const UIStats = {
                 plugins: {
                     legend: {
                         position: 'right',
-                        labels: {
-                            color: '#94a3b8',
-                            font: { size: 10 },
-                            boxWidth: 8
-                        }
+                        labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 8 }
                     }
                 }
             }
         });
     },
 
-    _initStaminaChart() {
+    _initStaminaChart(enduranceScore) {
         const ctx = document.getElementById('chart-stamina');
         if (!ctx) return;
 
-        // Mock data representing typical user fall-off
-        const labels = ['0m', '5m', '10m', '15m', '20m', '25m'];
-        const data = [100, 95, 92, 85, 70, 65]; // E.g., user gets tired
+        const labels = ['0m', '10m', '20m', '30m', '45m', '60m'];
+        const startFocus = 100;
+        const decayFactor = 1.0 - enduranceScore; 
+        const data = labels.map((_, i) => {
+            const drop = (i * 10) * decayFactor; 
+            return Math.max(40, startFocus - drop);
+        });
 
         const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 150);
         gradient.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
@@ -509,10 +475,10 @@ export const UIStats = {
                 datasets: [{
                     label: 'Focus Level',
                     data: data,
-                    borderColor: '#10b981', // Emerald
+                    borderColor: '#10b981',
                     backgroundColor: gradient,
                     fill: true,
-                    tension: 0.4, // Smooth curve
+                    tension: 0.4,
                     pointRadius: 0,
                     pointHoverRadius: 4
                 }]
@@ -534,14 +500,12 @@ export const UIStats = {
     // ============================================================
 
     _renderTimeline(parent) {
-        // 1. Inject Layout
-        // REFACTOR: Replaced glass-card/glass-panel with premium-card/premium-panel
         parent.innerHTML = `
             <div class="premium-card p-4 mb-6">
                 <div class="flex justify-between items-center mb-4 px-2">
                     <div>
                         <h3 class="text-sm font-bold uppercase tracking-wider">The Ascent</h3>
-                        <p class="text-[10px] opacity-50">Score progression over last 30 days</p>
+                        <p class="text-[10px] opacity-50">Score progression (%)</p>
                     </div>
                     <i class="fa-solid fa-arrow-trend-up text-emerald-400"></i>
                 </div>
@@ -557,8 +521,7 @@ export const UIStats = {
                     <span class="text-[10px] font-mono opacity-50">Last 28 Days</span>
                 </div>
                 
-                <div id="heatmap-grid" class="grid grid-cols-7 gap-2">
-                    </div>
+                <div id="heatmap-grid" class="grid grid-cols-7 gap-2"></div>
 
                 <div class="flex justify-between items-center mt-4 text-[10px] opacity-50 font-bold uppercase">
                     <span>Less</span>
@@ -573,7 +536,6 @@ export const UIStats = {
             </div>
         `;
 
-        // 2. Init Charts & Grid
         requestAnimationFrame(() => {
             this._initHistoryChart();
             this._renderHeatmap();
@@ -584,8 +546,23 @@ export const UIStats = {
         const ctx = document.getElementById('chart-history');
         if (!ctx) return;
 
-        const labels = Array.from({length: 10}, (_, i) => `Day ${i+1}`);
-        const data = [30, 35, 32, 45, 50, 48, 60, 65, 70, 75]; // Simulated growth
+        const sortedHistory = [...this.state.historyData]
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .slice(-20); 
+
+        let labels, data;
+
+        if (sortedHistory.length === 0) {
+            labels = ['Start'];
+            data = [0];
+        } else {
+            labels = sortedHistory.map(h => new Date(h.timestamp).toLocaleDateString(undefined, {month:'short', day:'numeric'}));
+            // 🛡️ FIX: Normalized to Percentage to prevent zig-zag between Mock (200) and Practice (30)
+            data = sortedHistory.map(h => {
+                const total = h.totalMarks || 30; // Fallback to 30 if missing
+                return Math.round((h.score / total) * 100);
+            });
+        }
 
         const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 250);
         gradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
@@ -596,12 +573,12 @@ export const UIStats = {
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Avg Score',
+                    label: 'Score %',
                     data: data,
-                    borderColor: '#3b82f6', // Blue-500
+                    borderColor: '#3b82f6',
                     backgroundColor: gradient,
                     fill: true,
-                    tension: 0.4,
+                    tension: 0.3,
                     pointRadius: 3,
                     pointBackgroundColor: '#1e293b',
                     pointBorderColor: '#3b82f6',
@@ -616,6 +593,8 @@ export const UIStats = {
                     x: { display: false },
                     y: { 
                         display: true, 
+                        min: 0, 
+                        max: 100, // Fixed 0-100 scale
                         grid: { color: 'rgba(255,255,255,0.05)' },
                         ticks: { color: '#64748b', font: { size: 9 } }
                     }
@@ -628,19 +607,27 @@ export const UIStats = {
         const grid = document.getElementById('heatmap-grid');
         if (!grid) return;
 
-        // Generate 28 days of activity (4 weeks)
-        // Mock logic: Random activity levels
-        let html = '';
-        for (let i = 0; i < 28; i++) {
-            const activityLevel = Math.floor(Math.random() * 4); // 0 to 3
-            
-            let colorClass = 'bg-white/5 border-white/5'; // Default empty
-            if (activityLevel === 1) colorClass = 'bg-blue-900 border-blue-800'; // Low
-            if (activityLevel === 2) colorClass = 'bg-blue-600 border-blue-500 shadow-[0_0_5px_rgba(37,99,235,0.5)]'; // Med
-            if (activityLevel === 3) colorClass = 'bg-blue-400 border-blue-300 shadow-[0_0_10px_rgba(96,165,250,0.8)]'; // High
+        const activityMap = {};
+        this.state.historyData.forEach(h => {
+            const dateKey = new Date(h.timestamp).toISOString().split('T')[0];
+            activityMap[dateKey] = (activityMap[dateKey] || 0) + 1;
+        });
 
-            // Tooltip via title attr
-            html += `<div class="aspect-square rounded-md border border-opacity-20 ${colorClass} transition-all hover:scale-110" title="Day ${i+1}: ${activityLevel} sessions"></div>`;
+        let html = '';
+        const today = new Date();
+        
+        for (let i = 27; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(today.getDate() - i);
+            const key = d.toISOString().split('T')[0];
+            const count = activityMap[key] || 0;
+
+            let colorClass = 'bg-white/5 border-white/5';
+            if (count >= 1) colorClass = 'bg-blue-900 border-blue-800';
+            if (count >= 3) colorClass = 'bg-blue-600 border-blue-500 shadow-[0_0_5px_rgba(37,99,235,0.5)]';
+            if (count >= 5) colorClass = 'bg-blue-400 border-blue-300 shadow-[0_0_10px_rgba(96,165,250,0.8)]';
+
+            html += `<div class="aspect-square rounded-md border border-opacity-20 ${colorClass} transition-all hover:scale-110" title="${key}: ${count} quizzes"></div>`;
         }
         grid.innerHTML = html;
     }
