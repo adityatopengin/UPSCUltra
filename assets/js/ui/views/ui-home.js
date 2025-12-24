@@ -1,11 +1,11 @@
 /**
  * UI-HOME (THE DASHBOARD)
- * Version: 3.1.0 (Crash Proofed & Async Safe)
+ * Version: 3.3.0 (Patched: Grand Mock Integration)
  * Path: assets/js/ui/views/ui-home.js
  * Responsibilities:
  * 1. Renders the Oracle HUD (AI Prediction).
  * 2. Renders the "Resume Learning" card.
- * 3. Renders the Subject Grids with "Pillow" design.
+ * 3. Renders the Grand Mock Cards & Subject Grids.
  * 4. Handles the GS1/CSAT Toggle Switch.
  */
 
@@ -31,7 +31,6 @@ export const UIHome = {
 
         // 🛡️ CRASH PROOFING: Create Layout Slots
         // This ensures UI structure exists immediately, preventing layout shifts
-        // or white screens if async data (DB/Oracle) takes time to load.
         const slots = {
             oracle: document.createElement('div'),
             resume: document.createElement('div'),
@@ -54,88 +53,33 @@ export const UIHome = {
     // ============================================================
 
     _renderOracleSection(slot) {
-        const oracleSection = document.createElement('div');
-        oracleSection.className = 'oracle-container premium-card mb-6 p-6 relative overflow-hidden rounded-[32px] min-h-[220px] animate-fade-in';
-        
-        // Mist Effect
-        const mist = document.createElement('div');
-        mist.className = 'oracle-mist';
-        oracleSection.appendChild(mist);
-        
-        // Content Skeleton
-        const content = document.createElement('div');
-        content.className = 'relative z-10';
-        content.innerHTML = this._getOracleSkeleton();
-        oracleSection.appendChild(content);
-        
-        slot.appendChild(oracleSection);
+        // Create a wrapper for margins/layout, but let UIOracle handle the inner card
+        const wrapper = document.createElement('div');
+        wrapper.className = 'mb-6 animate-fade-in min-h-[220px]';
+        slot.appendChild(wrapper);
 
-        // Trigger Async Logic
-        this._initOracle();
+        // Trigger Component Load (Delegating view logic to ui-oracle.js)
+        this._initOracle(wrapper);
     },
 
-    _getOracleSkeleton() {
-        return `
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h2 class="text-[10px] font-black opacity-60 uppercase tracking-[0.2em]">Oracle Prediction</h2>
-                    <h3 id="prob-text" class="premium-text-head text-lg font-black mt-1 animate-pulse">ANALYZING DATA...</h3>
-                </div>
-                <div class="w-10 h-10 rounded-2xl premium-panel flex items-center justify-center shadow-lg">
-                    <i class="fa-solid fa-brain text-sm text-indigo-400"></i>
-                </div>
-            </div>
-
-            <div class="absolute inset-0 top-16 z-0 opacity-50">
-                <canvas id="cloudChart"></canvas>
-            </div>
-
-            <div class="relative z-10 mt-8 flex justify-between items-end">
-                <div>
-                    <div class="text-[9px] font-bold opacity-50 uppercase mb-1">Projected Score</div>
-                    <div class="flex items-baseline gap-2">
-                        <span id="main-score" class="text-5xl font-black tracking-tighter premium-text-head">--</span>
-                        <span class="text-xs opacity-50 font-bold">/ 200</span>
-                    </div>
-                </div>
-                
-                <div class="text-right space-y-1">
-                    <div class="flex items-center justify-end gap-2 text-[9px] opacity-40 font-bold">
-                        <span>MIN</span> <span id="min-score" class="opacity-80">--</span>
-                    </div>
-                    <div class="flex items-center justify-end gap-2 text-[9px] opacity-40 font-bold">
-                        <span>MAX</span> <span id="max-score" class="opacity-80">--</span>
-                    </div>
-                </div>
-            </div>
-
-            <div id="warning-container" class="relative z-10 mt-6 flex gap-2 overflow-x-auto no-scrollbar">
-            </div>
-        `;
-    }, 
-
-    async _initOracle() {
-        // 🛡️ SAFETY: Check if Oracle UI Component is loaded
-        if (window.UIOracle) {
-            window.UIOracle.init(); 
+    async _initOracle(container) {
+        // 🛡️ FIX: Lazy Load the Oracle Component if missing
+        if (!window.UIOracle) {
+            try {
+                await import('../components/ui-oracle.js');
+            } catch (e) {
+                console.warn("UIHome: Oracle component missing.");
+                container.innerHTML = `<div class="p-4 text-center text-rose-500 text-xs font-bold">Oracle Offline</div>`;
+                return;
+            }
         }
 
-        try {
-            // 🛡️ SAFETY: Check if Aggregator exists before calling
-            if (MasterAggregator) {
-                const prediction = await MasterAggregator.getPrediction();
-                if (window.UIOracle && prediction) {
-                    window.UIOracle.render(prediction);
-                }
-            }
-        } catch (e) {
-            console.error("UIHome: Oracle failed to load.", e);
-            const probText = document.getElementById('prob-text');
-            if (probText) {
-                probText.innerText = "SYSTEM OFFLINE";
-                probText.classList.remove('animate-pulse');
-                probText.style.color = '#f43f5e'; // Tailwind Rose-500
-            }
+        // 🛡️ SAFETY: Initialize & Render
+        if (window.UIOracle) {
+            window.UIOracle.init();
+            // Critical Fix: Passing the CONTAINER, not the data. 
+            // UIOracle.js handles the fetching via MasterAggregator internally.
+            window.UIOracle.render(container); 
         }
     }, 
 
@@ -203,7 +147,7 @@ export const UIHome = {
     }, 
 
     // ============================================================
-    // 4. TOGGLE SWITCH & GRIDS
+    // 4. TOGGLE SWITCH & GRIDS (UPDATED FOR GRAND MOCKS)
     // ============================================================
 
     _renderToggleSwitch(slot) {
@@ -226,15 +170,15 @@ export const UIHome = {
         
         slot.appendChild(wrapper);
 
-        // Bind Logic (Using document selector since grids are in DOM now)
+        // Bind Logic (Targeting New Section IDs)
         setTimeout(() => {
             const btnGS = document.getElementById('btn-gs1');
             const btnCSAT = document.getElementById('btn-csat');
             const pill = document.getElementById('toggle-pill');
-            const gridGS = document.getElementById('grid-gs1');
-            const gridCSAT = document.getElementById('grid-csat');
+            const sectionGS = document.getElementById('section-gs1');
+            const sectionCSAT = document.getElementById('section-csat');
 
-            if (!btnGS || !btnCSAT || !gridGS) return; // Safety
+            if (!btnGS || !btnCSAT || !sectionGS) return; // Safety
 
             btnGS.onclick = () => {
                 pill.style.transform = 'translateX(0)';
@@ -243,9 +187,9 @@ export const UIHome = {
                 btnCSAT.style.opacity = '0.5';
                 btnCSAT.classList.remove('text-blue-600');
                 
-                gridGS.classList.remove('hidden');
-                gridGS.classList.add('animate-slide-up');
-                gridCSAT.classList.add('hidden');
+                sectionGS.classList.remove('hidden');
+                sectionGS.classList.add('animate-slide-up');
+                sectionCSAT.classList.add('hidden');
             };
 
             btnCSAT.onclick = () => {
@@ -255,32 +199,50 @@ export const UIHome = {
                 btnGS.style.opacity = '0.5';
                 btnGS.classList.remove('text-blue-600');
                 
-                gridCSAT.classList.remove('hidden');
-                gridCSAT.classList.add('animate-slide-up');
-                gridGS.classList.add('hidden');
+                sectionCSAT.classList.remove('hidden');
+                sectionCSAT.classList.add('animate-slide-up');
+                sectionGS.classList.add('hidden');
             };
         }, 50);
     },
 
     _renderSubjectGrids(slot) {
-        // --- GRID 1: GS Paper I ---
-        const gridGS = document.createElement('div');
-        gridGS.id = 'grid-gs1';
-        gridGS.className = "grid grid-cols-2 gap-4 pb-20"; 
+        // 🛡️ REFACTOR: Wrappers now hold both Mock Card + Grid for clean toggling
         
-        // 🛡️ SAFETY: Check if Config exists
+        // --- SECTION 1: GS Paper I ---
+        const sectionGS = document.createElement('div');
+        sectionGS.id = 'section-gs1';
+        sectionGS.className = 'pb-20';
+
+        // 1. Grand Mock Card
+        const mockGS = this._createMockCard('mock_gs1', 'GS Prelims Mock', 'Full Syllabus • Weighted Aggregate');
+        sectionGS.appendChild(mockGS);
+
+        // 2. Subject Grid
+        const gridGS = document.createElement('div');
+        gridGS.className = "grid grid-cols-2 gap-4"; 
+        
         if (CONFIG && CONFIG.subjectsGS1) {
             CONFIG.subjectsGS1.forEach((sub, index) => {
                 const tile = this._createSubjectTile(sub, index);
                 gridGS.appendChild(tile);
             });
         }
-        slot.appendChild(gridGS);
+        sectionGS.appendChild(gridGS);
+        slot.appendChild(sectionGS);
 
-        // --- GRID 2: CSAT (Hidden by default) ---
+        // --- SECTION 2: CSAT (Hidden by default) ---
+        const sectionCSAT = document.createElement('div');
+        sectionCSAT.id = 'section-csat';
+        sectionCSAT.className = 'hidden pb-20';
+
+        // 1. Grand Mock Card
+        const mockCSAT = this._createMockCard('mock_csat', 'CSAT Mock', 'Logic & Quant • Weighted Aggregate');
+        sectionCSAT.appendChild(mockCSAT);
+
+        // 2. Subject Grid
         const gridCSAT = document.createElement('div');
-        gridCSAT.id = 'grid-csat';
-        gridCSAT.className = "hidden grid grid-cols-2 gap-4 pb-20"; 
+        gridCSAT.className = "grid grid-cols-2 gap-4"; 
         
         if (CONFIG && CONFIG.subjectsCSAT) {
             CONFIG.subjectsCSAT.forEach((sub, index) => {
@@ -288,12 +250,50 @@ export const UIHome = {
                 gridCSAT.appendChild(tile);
             });
         }
-        slot.appendChild(gridCSAT);
+        sectionCSAT.appendChild(gridCSAT);
+        slot.appendChild(sectionCSAT);
     },
 
     // ============================================================
-    // 5. HELPER: PILLOW TILE GENERATOR
+    // 5. COMPONENT HELPERS
     // ============================================================
+
+    // 🛡️ NEW: Helper for the Grand Mock Card
+    _createMockCard(id, title, subtitle) {
+        const div = document.createElement('div');
+        div.className = 'premium-card flavor-gold p-6 rounded-[28px] mb-6 relative overflow-hidden cursor-pointer active:scale-95 transition-transform group animate-fade-in';
+        
+        // Triggers the Main.handleMockSelection modal
+        div.onclick = () => {
+            if (window.Main && window.Main.handleMockSelection) {
+                window.Main.handleMockSelection(id);
+            }
+        };
+        
+        div.innerHTML = `
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity rotate-12">
+                <i class="fa-solid fa-trophy text-6xl"></i>
+            </div>
+            
+            <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
+                        <i class="fa-solid fa-star text-xs animate-pulse"></i>
+                    </div>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-amber-400">Official Protocol</span>
+                </div>
+                
+                <h3 class="text-xl font-black premium-text-head uppercase italic tracking-tight leading-none mb-1">${title}</h3>
+                <p class="text-xs font-bold opacity-60">${subtitle}</p>
+            </div>
+            
+            <div class="mt-5 flex items-center gap-2 text-[10px] font-bold opacity-40 uppercase tracking-widest group-hover:opacity-100 transition-opacity">
+                <span>Tap to Configure</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        `;
+        return div;
+    },
 
     _createSubjectTile(sub, index) {
         const div = document.createElement('div');
@@ -354,3 +354,4 @@ export const UIHome = {
 };
 
 window.UIHome = UIHome;
+
