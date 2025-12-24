@@ -1,6 +1,6 @@
 /**
  * SERVICE WORKER (THE OFFLINE GUARDIAN)
- * Version: 2.0.0
+ * Version: 2.1.0 (Patched: Chart.js Offline Support)
  * Strategy: "Shell First, Lazy Rest"
  * * 1. INSTALL: Caches only the critical "App Shell" (HTML/CSS/Core JS).
  * 2. FETCH: Intercepts requests.
@@ -24,7 +24,9 @@ const PRECACHE_ASSETS = [
     './assets/js/ui/views/ui-home.js',      // Home View
     './assets/js/ui/components/ui-header.js', // Navigation
     './assets/js/services/data-seeder.js',    // The Database Generator
-    './assets/js/services/db.js'               // The Database Connection
+    './assets/js/services/db.js',              // The Database Connection
+    // 🛡️ FIX: Pre-cache Chart.js so Analytics works offline immediately
+    'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 
 // ============================================================
@@ -32,14 +34,14 @@ const PRECACHE_ASSETS = [
 // ============================================================
 
 self.addEventListener('install', (event) => {
-    console.log('👷 SW: Installing...');
+    console.log('孫 SW: Installing...');
     
     // Skip waiting forces this SW to become active immediately
     self.skipWaiting();
 
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            console.log('👷 SW: Pre-caching App Shell...');
+            console.log('孫 SW: Pre-caching App Shell...');
             return cache.addAll(PRECACHE_ASSETS);
         })
     );
@@ -50,7 +52,7 @@ self.addEventListener('install', (event) => {
 // ============================================================
 
 self.addEventListener('activate', (event) => {
-    console.log('👷 SW: Activated.');
+    console.log('孫 SW: Activated.');
     
     // Claim clients immediately so the user doesn't need to refresh
     event.waitUntil(
@@ -61,7 +63,7 @@ self.addEventListener('activate', (event) => {
                 return Promise.all(
                     keys.map((key) => {
                         if (key !== CACHE_NAME) {
-                            console.log('👷 SW: Deleting old cache', key);
+                            console.log('孫 SW: Deleting old cache', key);
                             return caches.delete(key);
                         }
                     })
@@ -143,3 +145,4 @@ self.addEventListener('fetch', (event) => {
     // For API calls or anything else (Data Seeding is local, so this handles edge cases)
     event.respondWith(fetch(event.request));
 });
+
