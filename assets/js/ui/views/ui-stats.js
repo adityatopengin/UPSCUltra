@@ -65,11 +65,13 @@ export const UIStats = {
     },
 
     // 🛡️ FIX: Memory Leak Prevention
+    // Called by UI Manager when navigating AWAY from this view
     onUnmount() {
         console.log("📈 UIStats: Cleaning up charts...");
         this._destroyAllCharts();
     },
 
+    // 🛡️ FIX: Centralized cleanup helper
     _destroyAllCharts() {
         Object.keys(this.state.charts).forEach(key => {
             if (this.state.charts[key]) {
@@ -162,7 +164,7 @@ export const UIStats = {
 
     _calculateGlobalRank() {
         // Uses AcademicEngine to calculate rank based on mastery
-        const avg = AcademicEngine.getGlobalMastery ? AcademicEngine.getGlobalMastery() : 0;
+        const avg = (AcademicEngine.getGlobalMastery) ? AcademicEngine.getGlobalMastery() : 0;
         if (avg > 90) return 'ELITE';
         if (avg > 75) return 'VETERAN';
         if (avg > 50) return 'ROOKIE';
@@ -205,7 +207,8 @@ export const UIStats = {
 
     _renderOverview(parent) {
         // 1. Fetch Data
-        // Fallback to empty object if Engine not ready
+        // Fallback to empty object if Engine not ready or has no data
+        // We check AcademicEngine.state.mastery directly or fallback to empty
         const subjects = (AcademicEngine.state && AcademicEngine.state.mastery) ? AcademicEngine.state.mastery : {}; 
         const labels = Object.keys(subjects).map(s => s.charAt(0).toUpperCase() + s.slice(1));
         const dataPoints = Object.values(subjects).map(s => s.score || 0);
@@ -272,7 +275,7 @@ export const UIStats = {
         gradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)'); // Blue center
         gradient.addColorStop(1, 'rgba(139, 92, 246, 0.1)'); // Purple fade
 
-        // Default data if empty
+        // Default data if empty (Visual Placeholder)
         const safeLabels = labels.length ? labels : ['Polity', 'History', 'Geog', 'Econ', 'Env'];
         const safeData = data.length ? data : [65, 59, 90, 81, 56];
 
