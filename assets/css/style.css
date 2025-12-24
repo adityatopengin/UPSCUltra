@@ -1,257 +1,325 @@
-/*
- * UPSC SUPERAPP - NEBULA OS (FIXED)
- * Theme: "Soft Petal & Deep Space"
- * Version: 4.1.0 (Fixed Headers & Solid Popups)
- */
-
-/* --- 1. FONTS & TAILWIND --- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Space+Grotesk:wght@500;700&display=swap');
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* --- 2. THEME VARIABLES --- */
+/* ==========================================================================
+   1. CORE VARIABLES & THEME CONFIGURATION
+   ========================================================================== */
 :root {
-    /* FIX 3: Darker Mist Background for Contrast */
-    --bg-app: #f1f5f9; 
-    --bg-card-solid: #ffffff; /* For Popups */
-    
-    /* FIX 3: Stronger Aurora Opacity (0.8) */
-    --blob-opacity: 0.8;
-    
-    /* Text Physics */
-    --text-primary: #1e293b;  /* Slate 800 */
-    --text-secondary: #64748b; /* Slate 500 */
-    
-    /* The "Petal" Flavors */
-    --flavor-gold: #fbbf24;
-    --flavor-blue: #3b82f6;
-    --flavor-pink: #f472b6;
-    --flavor-green: #34d399;
-    --flavor-purple: #a78bfa;
-    --flavor-cyan: #22d3ee;
-    
-    /* Animation Physics */
-    --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* --- DARK MODE --- */
-.dark {
-    --bg-app: #020617; /* Deep Navy */
-    --bg-card-solid: #0f172a; /* Solid Navy for Popups */
-    
-    /* Subtle Aurora in Dark Mode */
-    --blob-opacity: 0.3; 
-    
+    /* Base Palette (Slate-900 Theme) */
+    --bg-app: #0f172a;
+    --bg-surface: #1e293b;
     --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
+    --text-secondary: #94a3b8;
     
-    /* Neon Flavors */
-    --flavor-gold: #fbbf24;
-    --flavor-blue: #60a5fa;
-    --flavor-pink: #f472b6;
-    --flavor-green: #4ade80;
-    --flavor-purple: #c084fc;
-    --flavor-cyan: #22d3ee;
+    /* Brand Colors */
+    --primary: #3b82f6;   /* Blue 500 */
+    --success: #10b981;   /* Emerald 500 */
+    --warning: #f59e0b;   /* Amber 500 */
+    --danger: #f43f5e;    /* Rose 500 */
+
+    /* Glassmorphism Tokens */
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shine: rgba(255, 255, 255, 0.05);
+    --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    
+    /* Animation Speeds */
+    --ease-elastic: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* --- 3. GLOBAL RESET & AURORA ENGINE --- */
-html, body {
-    height: 100%;
-    width: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    font-family: 'Inter', sans-serif;
-    background: var(--bg-app);
-    color: var(--text-primary);
+/* ==========================================================================
+   2. GLOBAL RESET & TYPOGRAPHY
+   ========================================================================== */
+* {
+    box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
-    transition: background-color 0.5s ease;
 }
 
-h1, h2, h3, .font-display {
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+}
+
+body {
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+    overscroll-behavior-y: none; /* Disables pull-to-refresh on mobile */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
     font-family: 'Space Grotesk', sans-serif;
 }
 
-/* FIX 1: FORCE HEADERS TO SCROLL AWAY */
-/* This overrides any 'sticky' or 'fixed' classes in the HTML for page headers */
-header, .page-header {
-    position: relative !important;
-    background: transparent !important;
-    backdrop-filter: none !important;
-    border: none !important;
-    z-index: 10;
-}
+/* Custom Scrollbar (Hidden on mobile usually, visible on desktop) */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-/* THE AURORA (Moving Background Blobs) */
-body::before, body::after {
-    content: "";
-    position: fixed;
-    width: 90vw; /* Larger blobs */
-    height: 90vw;
-    border-radius: 50%;
-    filter: blur(80px); /* Tighter blur for more visibility */
-    z-index: -1;
-    opacity: var(--blob-opacity); /* Uses the new Stronger Variable */
-    animation: drift 25s infinite alternate ease-in-out;
-    pointer-events: none;
-}
+/* Utility: Hide Scrollbar */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Blob 1: Top Left (Lavender) */
-body::before {
-    top: -20%;
-    left: -20%;
-    background: radial-gradient(circle, var(--flavor-purple) 0%, transparent 70%);
-}
+/* Utility: Safe Area Spacing (iPhone Notch Support) */
+.safe-area-pt { padding-top: env(safe-area-inset-top); }
+.safe-area-pb { padding-bottom: env(safe-area-inset-bottom); }
 
-/* Blob 2: Bottom Right (Rose) */
-body::after {
-    bottom: -20%;
-    right: -20%;
-    background: radial-gradient(circle, var(--flavor-pink) 0%, transparent 70%);
-    animation-delay: -10s;
-}
+/* ==========================================================================
+   3. GLASSMORPHISM SYSTEM (THE "PREMIUM" LOOK)
+   ========================================================================== */
 
-/* Dark Mode Aurora */
-.dark body::before { background: radial-gradient(circle, #4c1d95 0%, transparent 70%); }
-.dark body::after { background: radial-gradient(circle, #be185d 0%, transparent 70%); }
-
-@keyframes drift {
-    0% { transform: translate(0, 0) scale(1); }
-    100% { transform: translate(30px, -30px) scale(1.1); }
-}
-
-/* --- 4. THE CARD ENGINE --- */
-
+/* Level 1: The Base Card
+   Used for: Dashboard tiles, result cards
+*/
 .premium-card {
-    position: relative;
-    overflow: hidden;
-    isolation: isolate;
-    /* Ceramic White */
-    background: rgba(255, 255, 255, 0.95); 
-    border: 1px solid rgba(255, 255, 255, 1);
+    background: linear-gradient(145deg, var(--glass-shine) 0%, rgba(255,255,255,0.01) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    transition: transform 0.2s var(--ease-smooth), opacity 0.2s ease;
+}
+
+/* Level 2: The Inner Panel 
+   Used for: Buttons inside cards, darker sections
+*/
+.premium-panel {
+    background: rgba(15, 23, 42, 0.6); /* Slate-900 at 60% opacity */
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* Level 3: The Navigation Dock
+   Heaviest blur, floats at bottom
+*/
+.premium-nav {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
     border-radius: 24px;
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s var(--ease-bounce);
-    cursor: pointer;
+    box-shadow: 
+        0 10px 40px -10px rgba(0,0,0,0.5),
+        inset 0 1px 0 rgba(255,255,255,0.1);
 }
 
-.dark .premium-card {
-    background: rgba(30, 41, 59, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
-}
-
-.premium-card:active { transform: scale(0.98); }
-
-/* --- FLAVOR INJECTORS --- */
-.flavor-gold { --accent: var(--flavor-gold); }
-.flavor-blue { --accent: var(--flavor-blue); }
-.flavor-pink { --accent: var(--flavor-pink); }
-.flavor-green { --accent: var(--flavor-green); }
-.flavor-purple { --accent: var(--flavor-purple); }
-.flavor-cyan { --accent: var(--flavor-cyan); }
-
-/* Flavor Visuals */
-.premium-card[class*="flavor-"] {
-    border-bottom: 3px solid var(--accent); /* Thicker bottom lip */
-}
-
-.premium-card[class*="flavor-"]:hover {
-    box-shadow: 0 15px 40px -5px var(--accent); /* Colored Glow */
-    transform: translateY(-4px);
-    z-index: 10;
-}
-.dark .premium-card[class*="flavor-"]:hover {
-    box-shadow: 0 0 30px -5px var(--accent); /* Neon Bloom */
-}
-
-/* --- 5. THE PILLOW ICON --- */
-.icon-pillow {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 3.5rem;
-    height: 3.5rem;
-    border-radius: 18px;
-    font-size: 1.5rem;
-    background: rgba(0,0,0,0.03);
-    color: var(--text-secondary);
-    transition: all 0.3s ease;
-}
-
-.premium-card[class*="flavor-"] .icon-pillow {
-    /* Colored Glass Chip */
-    background: color-mix(in srgb, var(--accent), transparent 85%);
-    color: var(--accent);
-}
-
-.dark .premium-card[class*="flavor-"] .icon-pillow {
-    background: color-mix(in srgb, var(--accent), transparent 80%);
-    text-shadow: 0 0 15px var(--accent);
-}
-
-/* --- 6. FIX 2: SOLID POPUPS (NO X-RAY) --- */
-/* Target any modal content container */
-.modal-content, .popup-box, .premium-panel {
-    background-color: var(--bg-card-solid) !important; /* Force Solid */
-    border: 1px solid rgba(0,0,0,0.05);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    /* Remove Glass Effect to prevent transparency issues */
-    backdrop-filter: none !important; 
-}
-.dark .modal-content, .dark .popup-box, .dark .premium-panel {
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-/* --- 7. NAVIGATION & FOG --- */
-.fog-layer-bottom {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: 120px;
-    background: linear-gradient(to top, var(--bg-app) 20%, transparent 100%);
-    pointer-events: none;
-    z-index: 40;
-}
-
-#main-nav {
-    /* Porcelain Capsule */
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(255,255,255,0.5);
-    border-radius: 999px;
-    box-shadow: 0 10px 40px -5px rgba(0,0,0,0.1);
-}
-.dark #main-nav {
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(255,255,255,0.1);
-    box-shadow: 0 10px 40px -5px rgba(0,0,0,0.5);
-}
-
-.nav-btn.active {
-    color: var(--flavor-blue);
-    background: rgba(59, 130, 246, 0.1);
-}
-.dark .nav-btn.active {
-    color: #fff;
-    background: rgba(255,255,255,0.1);
-}
-
-/* --- 8. UTILITIES --- */
+/* Gradient Text Effect */
 .premium-text-head {
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.02em;
+    background: linear-gradient(to right, #fff 20%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    display: inline-block;
 }
 
-::-webkit-scrollbar { width: 0px; background: transparent; }
+/* ==========================================================================
+   4. COMPONENT: PILLOW ICONS
+   ========================================================================== */
+/* The "Squircle" icon container used in the dashboard grid */
+.icon-pillow {
+    width: 48px; height: 48px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 16px; /* Smooth corners */
+    font-size: 1.25rem;
+    
+    /* The 3D Effect */
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.02));
+    border-top: 1px solid rgba(255,255,255,0.15);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    
+    box-shadow: 
+        inset 1px 1px 1px rgba(255,255,255,0.05),
+        inset -1px -1px 2px rgba(0,0,0,0.3),
+        0 8px 15px rgba(0,0,0,0.3);
+        
+    transition: transform 0.3s var(--ease-elastic);
+}
 
-@media (min-width: 1024px) {
-    #app-container {
-        max-width: 1024px;
-        margin: 0 auto;
-        box-shadow: 0 0 100px rgba(0,0,0,0.1);
-        min-height: 100vh;
-        background: var(--bg-app);
-    }
+/* Active State for Buttons */
+button:active .icon-pillow {
+    transform: scale(0.95);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+
+/* ==========================================================================
+   5. COMPONENT: NAVIGATION DOCK BUTTONS
+   ========================================================================== */
+.nav-btn {
+    position: relative;
+    color: var(--text-secondary);
+    transition: all 0.3s var(--ease-smooth);
+}
+
+.nav-btn i {
+    transition: transform 0.3s var(--ease-elastic), color 0.3s ease;
+}
+
+/* Active Tab State */
+.nav-btn.active i {
+    color: var(--primary);
+    transform: translateY(-4px);
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.5));
+}
+
+.nav-btn.active span {
+    background-color: var(--primary);
+    box-shadow: 0 0 10px var(--primary);
+}
+
+/* ==========================================================================
+   6. THE FLAVOR SYSTEM (DYNAMIC THEMING)
+   ========================================================================== */
+/* These classes map to the 'color' field in config.js.
+   They set a CSS Variable (--accent) which is used by children elements.
+*/
+
+/* BLUE (Polity, Science) */
+.flavor-blue { --accent: #3b82f6; --accent-glow: rgba(59, 130, 246, 0.3); }
+.flavor-blue .icon-pillow { color: #60a5fa; box-shadow: 0 0 20px var(--accent-glow); }
+
+/* GOLD (History, Pattern Game) */
+.flavor-gold { --accent: #f59e0b; --accent-glow: rgba(245, 158, 11, 0.3); }
+.flavor-gold .icon-pillow { color: #fbbf24; box-shadow: 0 0 20px var(--accent-glow); }
+
+/* PINK/ROSE (Current Affairs, CSAT RC) */
+.flavor-pink { --accent: #ec4899; --accent-glow: rgba(236, 72, 153, 0.3); }
+.flavor-pink .icon-pillow { color: #f472b6; box-shadow: 0 0 20px var(--accent-glow); }
+
+/* GREEN/EMERALD (Environment, Geography) */
+.flavor-green { --accent: #10b981; --accent-glow: rgba(16, 185, 129, 0.3); }
+.flavor-green .icon-pillow { color: #34d399; box-shadow: 0 0 20px var(--accent-glow); }
+
+/* PURPLE (CSAT Logic, Arcade) */
+.flavor-purple { --accent: #a855f7; --accent-glow: rgba(168, 85, 247, 0.3); }
+.flavor-purple .icon-pillow { color: #c084fc; box-shadow: 0 0 20px var(--accent-glow); }
+
+/* CYAN (Economy, Blink Test) */
+.flavor-cyan { --accent: #06b6d4; --accent-glow: rgba(6, 182, 212, 0.3); }
+.flavor-cyan .icon-pillow { color: #22d3ee; box-shadow: 0 0 20px var(--accent-glow); }
+
+/* RED (Pressure Valve) */
+.flavor-red { --accent: #ef4444; --accent-glow: rgba(239, 68, 68, 0.3); }
+.flavor-red .icon-pillow { color: #f87171; box-shadow: 0 0 20px var(--accent-glow); }
+
+
+/* ==========================================================================
+   7. COMPONENT: ORACLE HOLOGRAPHIC EFFECT
+   ========================================================================== */
+.oracle-container {
+    position: relative;
+    /* A subtle mesh gradient background */
+    background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+}
+
+.oracle-mist {
+    position: absolute;
+    inset: -20px;
+    background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 60%);
+    filter: blur(20px);
+    opacity: 0.6;
+    animation: pulse-slow 4s infinite ease-in-out;
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   8. ANIMATIONS (HARDWARE ACCELERATED)
+   ========================================================================== */
+
+/* Fade In */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Slide Up (Used for lists, cards) */
+@keyframes slideUp {
+    from { opacity: 0; transform: translate3d(0, 20px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.animate-slide-up {
+    animation: slideUp 0.5s var(--ease-smooth) forwards;
+}
+
+/* Slide Down (Used for Toasts) */
+@keyframes slideDown {
+    from { opacity: 0; transform: translate3d(-50%, -20px, 0); }
+    to { opacity: 1; transform: translate3d(-50%, 0, 0); }
+}
+.animate-slide-down {
+    animation: slideDown 0.4s var(--ease-elastic) forwards;
+}
+
+/* Pulse (Used for Oracle Mist / Loading) */
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.05); }
+}
+.animate-pulse {
+    animation: pulse 3s infinite ease-in-out;
+}
+
+/* Spin (Loaders) */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* View Transitions (Used by Router) */
+.view-enter {
+    animation: fadeIn 0.3s ease-out;
+}
+.view-exit {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0);
+}
+
+/* ==========================================================================
+   9. INTERACTIVE ELEMENTS (INPUTS, TOGGLES)
+   ========================================================================== */
+.filter-btn {
+    transition: all 0.2s ease;
+}
+.filter-btn:active {
+    transform: scale(0.95);
+}
+
+/* Toggle Switch Pill (Home Page) */
+#toggle-pill {
+    transition: transform 0.3s var(--ease-elastic);
+    background: linear-gradient(to bottom, #fff, #e2e8f0);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* ==========================================================================
+   10. TOAST NOTIFICATIONS
+   ========================================================================== */
+#toast-container {
+    position: fixed;
+    top: 20px;
+    left: 0; 
+    right: 0;
+    z-index: 200; /* Highest priority */
+    pointer-events: none; /* Let clicks pass through */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.toast-msg {
+    pointer-events: auto;
+    /* Styles are handled by JS but we add base anims here */
+    will-change: transform, opacity;
 }
 
