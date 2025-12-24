@@ -1,6 +1,6 @@
 /**
  * UI-SETTINGS (CONTROL CENTER)
- * Version: 2.7.0 (Fixed Import, Handlers & Zombie Audio)
+ * Version: 2.8.0 (Patched: Full Database Repair)
  * Path: assets/js/ui/views/ui-settings.js
  * Responsibilities
  * 1. System Preferences (Theme, Haptics, Data).
@@ -30,7 +30,6 @@ export const UISettings = {
         console.log("⚙️ UISettings: Opening Control Center...");
         
         // 1. Setup Shell
-        // REFACTOR: Removed bg-slate-900. Increased padding to pb-40.
         container.className = 'view-container pb-40 min-h-screen select-none';
         
         // 2. Inject Content
@@ -60,7 +59,7 @@ export const UISettings = {
     },
 
     // ============================================================
-    // 3. DATA HANDLERS (ADDED THIS SECTION TO FIX BUTTONS)
+    // 3. DATA HANDLERS
     // ============================================================
 
     async handleExport() {
@@ -109,14 +108,16 @@ export const UISettings = {
     },
     
     async handleRepair() {
-        if (!confirm("This will wipe all existing questions and generate new ones. Continue?")) return;
+        if (!confirm("This will wipe all questions and academic stats to repair the database. Continue?")) return;
 
         const btn = document.activeElement;
         if(btn) btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i>';
 
         try {
-            // 1. Wipe Questions
-            if (window.DB) await window.DB.clear('questions');
+            // 1. Wipe Data
+            // 🛡️ FIX: Wipe both 'questions' and 'academic_state' to prevent Schema Mismatch
+            await DB.clearStore('questions');
+            await DB.clearStore('academic_state');
             
             // 2. Force Seed
             if (window.DataSeeder) {
@@ -127,8 +128,19 @@ export const UISettings = {
                 throw new Error("DataSeeder not loaded.");
             }
         } catch (e) {
+            console.error("Repair Failed:", e);
             alert("❌ Error: " + e.message);
             if(btn) btn.innerText = "Failed";
+        }
+    },
+
+    async handleReset() {
+        if(confirm("⚠️ FACTORY RESET WARNING ⚠️\n\nThis will permanently delete ALL your progress, history, and stats.\n\nAre you sure?")) {
+            await DB.clearStore('history');
+            await DB.clearStore('profiles');
+            await DB.clearStore('academic_state');
+            await DB.clearStore('mistakes');
+            window.location.reload();
         }
     },
 
@@ -193,7 +205,6 @@ export const UISettings = {
         if(!container) return;
 
         // Replace Animation with "Official Gazette" Table
-        // REFACTOR: Replaced specific colors with premium-panel and structural classes
         container.innerHTML = `
             <div class="text-center animate-slide-up">
                 <div class="w-16 h-16 mx-auto rounded-full flex items-center justify-center text-2xl mb-4 border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
@@ -241,16 +252,6 @@ export const UISettings = {
             </div>
         `;
     },
-
-    async handleReset() {
-        if(confirm("⚠️ FACTORY RESET WARNING ⚠️\n\nThis will permanently delete ALL your progress, history, and stats.\n\nAre you sure?")) {
-            await DB.clearStore('history');
-            await DB.clearStore('profiles');
-            await DB.clearStore('academic_state');
-            await DB.clearStore('mistakes');
-            window.location.reload();
-        }
-    },
     
     _handleEasterEgg() {
         this.state.clickCount++;
@@ -261,11 +262,10 @@ export const UISettings = {
     },
 
     // ============================================================
-    // 4. COMPONENT TEMPLATES (PRESERVED)
+    // 4. COMPONENT TEMPLATES
     // ============================================================
 
     _getHeaderTemplate() {
-        // REFACTOR: Removed bg-slate-900, text colors.
         return `
         <header class="sticky top-0 z-30 px-6 pt-12 pb-4 mb-6">
             <div class="flex items-center justify-between">
@@ -281,7 +281,6 @@ export const UISettings = {
     },
     
     _getSystemPrefsTemplate() {
-        // REFACTOR: Replaced glass-card/glass-panel with premium-card/premium-panel
         return `
         <section class="space-y-3">
             <label class="text-[9px] font-black opacity-50 uppercase tracking-widest pl-4">System Preferences</label>
@@ -319,7 +318,6 @@ export const UISettings = {
     },
 
     _getDataControlTemplate() {
-        // REFACTOR: Replaced glass-card with premium-card, removed hardcoded text colors
         return `
         <section class="space-y-3">
             <label class="text-[9px] font-black opacity-50 uppercase tracking-widest pl-4">Data Persistence</label>
@@ -382,7 +380,6 @@ export const UISettings = {
     },
 
     _getIntelligenceTemplate() {
-        // REFACTOR: Removed gradient overlays and glass-card
         return `
         <section class="space-y-3">
             <label class="text-[9px] font-black opacity-50 uppercase tracking-widest pl-4">App Intelligence</label>
@@ -412,7 +409,6 @@ export const UISettings = {
     },
 
     _getMissionTemplate() {
-        // REFACTOR: Replaced glass-card with premium-card
         return `
         <section class="space-y-3">
             <label class="text-[9px] font-black opacity-50 uppercase tracking-widest pl-4">Mission Universal</label>
@@ -448,7 +444,6 @@ export const UISettings = {
     },
 
     _getCreatorTemplate() {
-        // REFACTOR: Replaced glass-card with premium-card, removed gradient
         return `
         <section class="space-y-3">
             <label class="text-[9px] font-black opacity-50 uppercase tracking-widest pl-4">The Estate</label>
@@ -481,7 +476,6 @@ export const UISettings = {
     },
 
     _getFooterTemplate() {
-        // REFACTOR: Replaced glass-panel with premium-panel, removed text-slate-400
         return `
         <footer class="pt-4 pb-8 space-y-6">
             <div class="grid grid-cols-2 gap-3">
@@ -519,12 +513,9 @@ export const UISettings = {
         const overlay = document.getElementById('settings-modal-overlay');
         if (!overlay) return;
 
-        // 1. Generate Content based on Type
         const contentHTML = this._getModalContent(modalType);
         if (!contentHTML) return;
 
-        // 2. Inject into Overlay
-        // REFACTOR: Replaced bg-slate-900/backdrop-blur with premium-card styles
         overlay.innerHTML = `
             <div class="premium-card w-full max-w-md mx-4 max-h-[85vh] overflow-hidden relative animate-slide-up rounded-[32px] flex flex-col shadow-2xl">
                 
@@ -543,7 +534,6 @@ export const UISettings = {
             </div>
         `;
 
-        // 3. Show Overlay
         overlay.classList.remove('hidden');
         document.body.style.overflow = 'hidden'; 
     },
@@ -551,7 +541,6 @@ export const UISettings = {
     closeModal() {
         const overlay = document.getElementById('settings-modal-overlay');
         if (overlay) {
-            // Stop Audio if playing
             if (this.state.audioInstance) {
                 this.state.audioInstance.pause();
                 this.state.audioPlaying = false;
@@ -563,9 +552,6 @@ export const UISettings = {
         }
     },
 
-    /**
-     * Router for Modal Content
-     */
     _getModalContent(type) {
         switch (type) {
             case 'techBrief': return this._renderTechBrief();
@@ -639,7 +625,6 @@ export const UISettings = {
     },
     
    _renderStorageBureaucrat() {
-        // REFACTOR: Removed bg-slate-800, kept structural classes
         return `
         <div id="sarkari-container" class="p-8 pb-12 text-center">
             <div class="relative w-24 h-24 mx-auto mb-8">
@@ -669,9 +654,7 @@ export const UISettings = {
         </div>`;
     },
 
-
     _renderTechFAQ() {
-        // REFACTOR: Replaced bg-slate-800/50 with premium-panel
         return `
         <div class="p-8 pb-4">
             <div class="flex items-center gap-4 mb-6 text-amber-500">
@@ -862,11 +845,9 @@ Details: [Insert your bekaar job offer here]`
         const myEmail = "aditya.aditya.1492@gmail.com";
         const myTelegram = "kandiladitya";
         
-        // Draft 1: Email
         const emailSub = encodeURIComponent("Aaa Thuuu: My Eyes Are Bleeding 🩸");
         const emailBody = encodeURIComponent("Dear Aditya,\n\nIsse kharab app meine aaj tak nahi dekha. My phone started playing 'Mera Jeevan Kora Kaagaz' because there is zero logic here.\n\nIsse dekh kr bas ek hi sabd bolna hai—Aaa Thuuu! 💦");
         
-        // Draft 2: Telegram
         const tgText = encodeURIComponent("Knock Knock! 🚪 I am here to tell you that your app is a national emergency. NASA has detected a black hole and it's actually your 'Predictive Engine'. Aaa Thuuu! 💦");
 
         return `
@@ -918,3 +899,4 @@ Details: [Insert your bekaar job offer here]`
 };
 
 window.UISettings = UISettings;
+
