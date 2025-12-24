@@ -1,14 +1,16 @@
 /**
  * MASTER AGGREGATOR (THE MANAGER)
- * Version: 2.3.1 (Patched: Absolute Path + Error Handling)
+ * Version: 2.5.0 (Patched: Weight Injection + Schema Alignment)
  * Path: assets/js/services/master-aggregator.js
  * Responsibilities:
  * 1. Spawns the background Oracle Worker.
  * 2. Gathers data from DB (Academic + Behavioral).
- * 3. Sends data to Worker and dispatches predictions to UI.
+ * 3. Merges static config (Weights) with dynamic data (Mastery).
+ * 4. Sends data to Worker and dispatches predictions to UI.
  */
 
 import { DB } from './db.js';
+import { AcademicEngine } from '../engine/academic-engine.js';
 
 export const MasterAggregator = {
     
@@ -18,7 +20,7 @@ export const MasterAggregator = {
     
     worker: null,
     isCalculating: false,
-    _useFallbackMode: false, // 🛡️ FIX: Added fallback flag
+    _useFallbackMode: false, 
     
     config: {
         simulationRuns: 500,
@@ -44,8 +46,7 @@ export const MasterAggregator = {
 
         if (window.Worker) {
             try {
-                // 🛡️ FIX: Use absolute path for PWA/SPA stability [Fix #6]
-                // This prevents 404s if the user is on a nested route (e.g. /quiz/stats)
+                // 🛡️ FIX: Use absolute path for PWA/SPA stability
                 const workerPath = '/assets/js/workers/oracle.worker.js'; 
 
                 this.worker = new Worker(workerPath);
@@ -53,7 +54,6 @@ export const MasterAggregator = {
                 this.worker.onmessage = (e) => this._handleWorkerResponse(e);
                 
                 this.worker.onerror = (err) => {
-                    // 🛡️ FIX: Enhanced Error Logging
                     console.error("🔮 OracleWorker Critical Error:", {
                         message: err.message,
                         filename: err.filename,
@@ -105,7 +105,6 @@ export const MasterAggregator = {
                     });
                     this._pendingResolve = resolve;
                 } else {
-                    // 🛡️ FIX: Execute Fallback logic immediately if worker failed
                     console.log("🔮 Running Prediction on Main Thread (Fallback)...");
                     const fallbackResult = this._runFallbackSimulation(telemetry);
                     this.isCalculating = false;
@@ -130,9 +129,20 @@ export const MasterAggregator = {
         try {
             await DB.connect();
             const academicRaw = await DB.getAll('academic_state');
+            
             if (academicRaw && academicRaw.length > 0) {
                 academicRaw.forEach(item => {
-                    academicState[item.subjectId] = item;
+                    // 🛡️ FIX: Inject 'Weight' from AcademicEngine Config
+                    // The Worker needs 'sub.weight' to calculate points, but DB only has mastery.
+                    const subjectConfig = AcademicEngine.SUBJECTS[item.subjectId];
+                    const weight = subjectConfig ? subjectConfig.weight : 0.1;
+
+                    academicState[item.subjectId] = {
+                        ...item,
+                        weight: weight,
+                        // Ensure legacy 'score' is mapped to 'mastery' just in case
+                        mastery: (item.mastery !== undefined) ? item.mastery : (item.score || 0)
+                    };
                 });
             }
         } catch (e) {
@@ -269,6 +279,7 @@ export const MasterAggregator = {
         const subjects = data.academic ? Object.values(data.academic) : [];
         
         subjects.forEach(sub => {
+            // 🛡️ FIX: Use 'mastery' and 'weight' (both ensured by _gatherTelemetry)
             totalScore += (sub.mastery || 0) * (sub.weight || 0) * 2;
         });
 
@@ -283,4 +294,3 @@ export const MasterAggregator = {
         };
     }
 };
-
