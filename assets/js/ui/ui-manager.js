@@ -1,5 +1,6 @@
 /**
  * UI MANAGER (CRASH PROOF)
+ * Version: 2.2.0 (Patched: Toast Stacking)
  * Path: assets/js/ui/ui-manager.js
  */
 
@@ -70,27 +71,45 @@ export const UI = {
     },
 
     showToast(message, type = 'info') {
+        // 1. Find or Create Container (The Stacking Context)
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            // Fixed position, centers items, allows click-through
+            container.className = 'fixed top-6 left-0 right-0 z-[200] flex flex-col items-center gap-2 pointer-events-none';
+            document.body.appendChild(container);
+        }
+
+        // 2. Create Toast Element
         const div = document.createElement('div');
-        // REFACTOR: Replaced bg-slate-800 (info) with premium-card. Kept functional colors.
         const colors = { 
             success: 'bg-emerald-600', 
             error: 'bg-rose-600', 
             info: 'premium-card border border-white/10' 
         };
         
-        div.className = `fixed top-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-50 text-white text-xs font-bold uppercase tracking-wide animate-slide-down ${colors[type] || colors.info}`;
+        // 🛡️ FIX: Removed 'fixed' positioning from individual toasts.
+        // Added 'pointer-events-auto' so users can dismiss or copy text if needed.
+        div.className = `px-6 py-3 rounded-full shadow-2xl text-white text-xs font-bold uppercase tracking-wide animate-slide-down pointer-events-auto ${colors[type] || colors.info}`;
         div.innerText = message;
-        document.body.appendChild(div);
-        setTimeout(() => div.remove(), 3000);
+        
+        // 3. Append to Stack
+        container.appendChild(div);
+
+        // 4. Remove after delay with fade out
+        setTimeout(() => {
+            div.classList.add('opacity-0', 'scale-95', 'transition-all', 'duration-300'); // Smooth Exit
+            setTimeout(() => div.remove(), 300); // Wait for transition
+        }, 3000);
     },
 
     _setupGlobalClicks() {
         document.addEventListener('click', (e) => {
-            // Close modals if needed
+            // Placeholder for global modal closing logic if needed
         });
     }
 };
 
 window.UI = UI;
-
 
