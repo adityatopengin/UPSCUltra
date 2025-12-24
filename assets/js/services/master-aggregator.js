@@ -1,6 +1,6 @@
 /**
  * MASTER AGGREGATOR (THE MANAGER)
- * Version: 2.3.0 (Path Fix & Error Logging)
+ * Version: 2.3.1 (Patched: Absolute Path + Error Handling)
  * Path: assets/js/services/master-aggregator.js
  * Responsibilities:
  * 1. Spawns the background Oracle Worker.
@@ -18,6 +18,7 @@ export const MasterAggregator = {
     
     worker: null,
     isCalculating: false,
+    _useFallbackMode: false, // 🛡️ FIX: Added fallback flag
     
     config: {
         simulationRuns: 500,
@@ -39,22 +40,27 @@ export const MasterAggregator = {
     init() {
         console.log("🔮 MasterAggregator: Initializing Oracle System...");
 
-        if (this.worker) return; 
+        if (this.worker || this._useFallbackMode) return; 
 
         if (window.Worker) {
             try {
-                // ✅ CORRECTION: Use standard path relative to index.html
-                // This is much safer for Android/Webview environments
-                const workerPath = 'assets/js/workers/oracle.worker.js'; 
+                // 🛡️ FIX: Use absolute path for PWA/SPA stability [Fix #6]
+                // This prevents 404s if the user is on a nested route (e.g. /quiz/stats)
+                const workerPath = '/assets/js/workers/oracle.worker.js'; 
 
                 this.worker = new Worker(workerPath);
                 
                 this.worker.onmessage = (e) => this._handleWorkerResponse(e);
                 
                 this.worker.onerror = (err) => {
-                    // ✅ CORRECTION: Explicitly log the message to debug "Undefined" errors
-                    console.error("🔮 OracleWorker Critical Error:", err.message, "in file:", err.filename);
+                    // 🛡️ FIX: Enhanced Error Logging
+                    console.error("🔮 OracleWorker Critical Error:", {
+                        message: err.message,
+                        filename: err.filename,
+                        lineno: err.lineno
+                    });
                     this.isCalculating = false;
+                    this._useFallbackMode = true; // Switch to main thread fallback
                 };
 
                 this.worker.postMessage({ command: 'PING' });
@@ -62,9 +68,11 @@ export const MasterAggregator = {
 
             } catch (e) {
                 console.warn("🔮 OracleWorker path error. Using Fallback.", e);
+                this._useFallbackMode = true;
             }
         } else {
             console.warn("🔮 Web Workers not supported. Using Fallback.");
+            this._useFallbackMode = true;
         }
     },
 
@@ -73,7 +81,7 @@ export const MasterAggregator = {
     // ============================================================
 
     async getPrediction() {
-        if (!this.worker) this.init();
+        if (!this.worker && !this._useFallbackMode) this.init();
 
         if (this.isCalculating) return null; 
 
@@ -89,7 +97,7 @@ export const MasterAggregator = {
             this.lastDataSignature = currentSignature;
 
             return new Promise((resolve) => {
-                if (this.worker) {
+                if (this.worker && !this._useFallbackMode) {
                     this.worker.postMessage({
                         command: 'RUN_ENSEMBLE',
                         data: telemetry,
@@ -97,7 +105,8 @@ export const MasterAggregator = {
                     });
                     this._pendingResolve = resolve;
                 } else {
-                    // Fallback if worker failed to spawn
+                    // 🛡️ FIX: Execute Fallback logic immediately if worker failed
+                    console.log("🔮 Running Prediction on Main Thread (Fallback)...");
                     const fallbackResult = this._runFallbackSimulation(telemetry);
                     this.isCalculating = false;
                     this.lastPrediction = fallbackResult;
