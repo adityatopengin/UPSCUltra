@@ -1,36 +1,22 @@
 /**
- * UI-ORACLE (THE VISUAL BRAIN)
- * Version: 2.0.0
+ * UI-ORACLE (THE HOLOGRAM)
+ * Version: 2.1.0 (Patched: Missing Render Method)
  * Path: assets/js/ui/components/ui-oracle.js
  * Responsibilities:
- * 1. Renders the interactive Holographic Chart (Canvas).
- * 2. Visualizes the 7-Dimensional Behavioral Profile.
- * 3. Adds "Living" animations (rotation, pulse) to the home screen.
+ * 1. Visualizes the AI Prediction (Score + Probability).
+ * 2. Renders the Bell Curve Chart.
+ * 3. Listens for 'oracle-update' events from MasterAggregator.
  */
 
-import { BehavioralEngine } from '../../engine/behavioral-engine.js';
+import { MasterAggregator } from '../../services/master-aggregator.js';
 
 export const UIOracle = {
     // ============================================================
-    // 1. CONFIGURATION
+    // 1. STATE & CONFIG
     // ============================================================
-    config: {
-        canvasId: 'oracle-canvas',
-        containerId: 'oracle-container',
-        color: '#3b82f6', // Default Blue (Tailwind blue-500)
-        size: 300,        // Logical size
-        rotationSpeed: 0.002,
-        pulseSpeed: 0.02
-    },
-
     state: {
-        ctx: null,
-        width: 0,
-        height: 0,
-        angleOffset: 0,
-        pulseOffset: 0,
-        animationFrame: null,
-        profileData: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5] // Default balanced
+        chartInstance: null,
+        lastPrediction: null
     },
 
     // ============================================================
@@ -38,189 +24,170 @@ export const UIOracle = {
     // ============================================================
 
     init() {
-        // Only run if we are on the Home View (or container exists)
-        // Actually, UI-Manager calls this globally, so we check for container presence
-        // or inject it if missing (usually UIHome injects the container).
+        console.log("🔮 UIOracle: Listening for prophecies...");
         
-        console.log("🔮 UIOracle: Booting Hologram...");
-        this._syncProfileData();
-        
-        // Listen for window resize to redraw crisp lines
-        window.addEventListener('resize', () => this._resize());
-    },
-
-    /**
-     * Called by UIHome.js when the Dashboard is rendered.
-     * This attaches the canvas to the DOM element provided by UIHome.
-     */
-    mount(containerElement) {
-        if (!containerElement) return;
-
-        // Create Canvas
-        containerElement.innerHTML = ''; // Clear placeholder
-        const canvas = document.createElement('canvas');
-        canvas.id = this.config.canvasId;
-        // REFACTOR: Removed 'opacity-80'. Kept structural classes.
-        canvas.className = 'w-full h-full object-contain'; 
-        containerElement.appendChild(canvas);
-
-        this.state.ctx = canvas.getContext('2d');
-        this._resize();
-        this._startAnimation();
-    },
-
-    /**
-     * Fetches real data from the Engine to populate the chart.
-     */
-    _syncProfileData() {
-        if (!BehavioralEngine || !BehavioralEngine.profile) return;
-
-        const p = BehavioralEngine.profile;
-        // Map the 7 dimensions to an array (Order matters for shape)
-        // Focus, Calm, Speed, Precision, Risk, Endurance, Flexibility
-        this.state.profileData = [
-            p.focus?.value || 0.5,
-            p.calm?.value || 0.5,
-            p.speed?.value || 0.5,
-            p.precision?.value || 0.5,
-            p.risk?.value || 0.5,
-            p.endurance?.value || 0.5,
-            p.flexibility?.value || 0.5
-        ];
-    },
-
-    _resize() {
-        const canvas = document.getElementById(this.config.canvasId);
-        if (!canvas) return;
-
-        const parent = canvas.parentElement;
-        this.state.width = parent.clientWidth;
-        this.state.height = parent.clientHeight;
-
-        // Handle High DPI (Retina) Displays for crisp text
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = this.state.width * dpr;
-        canvas.height = this.state.height * dpr;
-        
-        this.state.ctx.scale(dpr, dpr);
-    },
-    // ============================================================
-    // 3. RENDER LOOP (THE ARTIST)
-    // ============================================================
-
-    _startAnimation() {
-        if (this.state.animationFrame) cancelAnimationFrame(this.state.animationFrame);
-
-        const loop = () => {
-            this._draw();
-            // Update rotation params
-            this.state.angleOffset += this.config.rotationSpeed;
-            this.state.pulseOffset += this.config.pulseSpeed;
-            
-            this.state.animationFrame = requestAnimationFrame(loop);
-        };
-        loop();
-    },
-
-    _draw() {
-        const { ctx, width, height, angleOffset, pulseOffset, profileData } = this.state;
-        if (!ctx) return;
-
-        const centerX = width / 2;
-        const centerY = height / 2;
-        const radius = Math.min(width, height) / 2.5; // Padding
-        const labels = ['FOC', 'CLM', 'SPD', 'PRC', 'RSK', 'END', 'FLX'];
-        const numSides = labels.length;
-        const stepAngle = (Math.PI * 2) / numSides;
-
-        // Clear Canvas
-        ctx.clearRect(0, 0, width, height);
-
-        // A. Draw Background Grid (Spider Web)
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 1;
-
-        for (let r = 0.2; r <= 1.0; r += 0.2) {
-            ctx.beginPath();
-            for (let i = 0; i <= numSides; i++) {
-                const angle = (i * stepAngle) - (Math.PI / 2); // Start at top
-                const x = centerX + Math.cos(angle) * (radius * r);
-                const y = centerY + Math.sin(angle) * (radius * r);
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.closePath();
-            ctx.stroke();
-        }
-
-        // B. Draw Axes (Spokes)
-        ctx.beginPath();
-        for (let i = 0; i < numSides; i++) {
-            const angle = (i * stepAngle) - (Math.PI / 2);
-            const x = centerX + Math.cos(angle) * radius;
-            const y = centerY + Math.sin(angle) * radius;
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(x, y);
-            
-            // Draw Labels
-            ctx.fillStyle = 'rgba(148, 163, 184, 0.8)'; // Slate-400
-            ctx.font = '10px monospace';
-            ctx.textAlign = 'center';
-            const lx = centerX + Math.cos(angle) * (radius * 1.15);
-            const ly = centerY + Math.sin(angle) * (radius * 1.15);
-            ctx.fillText(labels[i], lx, ly);
-        }
-        ctx.stroke();
-
-        // C. Draw Data Polygon (The Profile)
-        ctx.beginPath();
-        profileData.forEach((value, i) => {
-            const angle = (i * stepAngle) - (Math.PI / 2);
-            // Add a subtle pulse effect to the size
-            const pulse = Math.sin(pulseOffset + i) * 0.05; 
-            const r = radius * (Math.max(0.1, value) + pulse);
-            
-            const x = centerX + Math.cos(angle) * r;
-            const y = centerY + Math.sin(angle) * r;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+        window.addEventListener('oracle-update', (e) => {
+            this._updateUI(e.detail);
         });
-        ctx.closePath();
-
-        // Fill Style (Gradient)
-        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)'); // Blue core
-        gradient.addColorStop(1, 'rgba(59, 130, 246, 0.1)'); // Faded edge
-        ctx.fillStyle = gradient;
-        ctx.fill();
-        
-        ctx.strokeStyle = '#60a5fa'; // Blue-400 border
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // D. Draw Rotating Outer Ring (Decoration)
-        ctx.beginPath();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([10, 20]); // Dashed line
-        ctx.arc(centerX, centerY, radius * 1.05, angleOffset, angleOffset + (Math.PI * 2));
-        ctx.stroke();
-        ctx.setLineDash([]); // Reset dash
     },
 
     /**
-     * Cleanup to stop the animation loop when view changes.
+     * 🛡️ FIX: The Missing Method
+     * This is called by UIHome to mount the component.
      */
-    destroy() {
-        if (this.state.animationFrame) {
-            cancelAnimationFrame(this.state.animationFrame);
-            this.state.animationFrame = null;
+    render(container) {
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="premium-card p-6 relative overflow-hidden group">
+                <div class="absolute -top-20 -right-20 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all duration-1000"></div>
+                
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h2 class="premium-text-head text-xs font-black uppercase tracking-widest text-purple-400 mb-1">
+                                <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Oracle Prediction
+                            </h2>
+                            <h1 class="text-3xl font-black tracking-tighter text-white" id="oracle-score">
+                                --- <span class="text-sm opacity-50 font-medium">/ 200</span>
+                            </h1>
+                        </div>
+                        <div class="text-right">
+                            <div id="oracle-prob-badge" class="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-wider opacity-0 transition-opacity">
+                                Calculating...
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="h-32 w-full relative">
+                        <canvas id="oracle-chart"></canvas>
+                        
+                        <div id="oracle-loader" class="absolute inset-0 flex items-center justify-center">
+                            <div class="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    </div>
+
+                    <div id="oracle-warnings" class="mt-4 flex flex-wrap gap-2 min-h-[20px]">
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Trigger Data Fetch immediately
+        setTimeout(() => {
+            MasterAggregator.getPrediction();
+        }, 500);
+    },
+
+    // ============================================================
+    // 3. UI UPDATE LOGIC
+    // ============================================================
+
+    _updateUI(prediction) {
+        if (!prediction) return;
+        
+        // 1. Format Data for Display
+        // MasterAggregator has a helper for this, but we can do a lightweight pass here
+        // or rely on the raw data. Ideally, MasterAggregator sends 'breakdown'.
+        
+        const scoreEl = document.getElementById('oracle-score');
+        const badgeEl = document.getElementById('oracle-prob-badge');
+        const loader = document.getElementById('oracle-loader');
+        const warningsEl = document.getElementById('oracle-warnings');
+
+        if (!scoreEl) return; // View might be unmounted
+
+        // Hide Loader
+        if (loader) loader.style.opacity = '0';
+
+        // Animate Score
+        scoreEl.innerHTML = `${prediction.score} <span class="text-sm opacity-50 font-medium">/ 200</span>`;
+
+        // Update Badge
+        const confidence = Math.round((prediction.confidence || 0.5) * 100);
+        if (badgeEl) {
+            badgeEl.textContent = `${confidence}% CONFIDENCE`;
+            badgeEl.className = `px-3 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-wider transition-all opacity-100 ${
+                confidence > 70 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 
+                'bg-amber-500/10 border-amber-500/20 text-amber-400'
+            }`;
         }
-        console.log("🔮 UIOracle: Shutting down.");
+
+        // Render Flags/Warnings
+        if (warningsEl && prediction.flags && prediction.flags.length > 0) {
+            warningsEl.innerHTML = prediction.flags.map(flag => {
+                let color = 'rose';
+                let icon = 'triangle-exclamation';
+                
+                if (flag === 'GAMBLER_RISK') { icon = 'dice'; color = 'amber'; }
+                if (flag === 'FATIGUE_RISK') { icon = 'battery-quarter'; color = 'orange'; }
+                if (flag === 'PANIC_PRONE') { icon = 'face-dizzy'; color = 'purple'; }
+
+                return `<span class="px-2 py-1 rounded bg-${color}-500/10 border border-${color}-500/20 text-${color}-400 text-[9px] font-bold uppercase flex items-center gap-1">
+                    <i class="fa-solid fa-${icon}"></i> ${flag.replace('_', ' ')}
+                </span>`;
+            }).join('');
+        } else if (warningsEl) {
+            warningsEl.innerHTML = `<span class="opacity-30 text-[9px] font-bold uppercase">System Stable</span>`;
+        }
+
+        // Render Chart
+        this._renderChart(prediction);
+    },
+
+    _renderChart(prediction) {
+        const ctx = document.getElementById('oracle-chart');
+        if (!ctx || !window.Chart) return;
+
+        // Cleanup old chart
+        if (this.state.chartInstance) {
+            this.state.chartInstance.destroy();
+        }
+
+        // Generate Bell Curve Points
+        // We use MasterAggregator's logic essentially: Mean = Score, Range = Min/Max
+        const mean = prediction.score;
+        const sigma = (prediction.range.max - prediction.range.min) / 4; // Approx std dev
+        
+        const dataPoints = [];
+        const labels = [];
+        
+        for (let x = mean - (2 * sigma); x <= mean + (2 * sigma); x += (sigma / 5)) {
+            const y = (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / sigma, 2));
+            dataPoints.push(y);
+            labels.push(Math.round(x));
+        }
+
+        // Create Gradient
+        const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 150);
+        gradient.addColorStop(0, 'rgba(168, 85, 247, 0.5)'); // Purple-500
+        gradient.addColorStop(1, 'rgba(168, 85, 247, 0)');
+
+        this.state.chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataPoints,
+                    borderColor: '#a855f7', // Purple-500
+                    borderWidth: 2,
+                    backgroundColor: gradient,
+                    fill: true,
+                    pointRadius: 0,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                },
+                animation: { duration: 1000 }
+            }
+        });
     }
 };
-
-// Global Exposure
-window.UIOracle = UIOracle;
-
 
