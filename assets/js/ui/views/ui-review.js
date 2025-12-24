@@ -1,6 +1,6 @@
 /**
  * UI-REVIEW (MISTAKE ANALYSIS)
- * Version: 2.0.0 (Fixed Answer Lookup)
+ * Version: 2.2.0 (Patched: Grand Mock Support)
  * Path: assets/js/ui/views/ui-review.js
  * Responsibilities:
  * 1. Fetches the Exam Result and the original Questions.
@@ -9,6 +9,7 @@
  */
 
 import { DB } from '../../services/db.js';
+import { CONFIG } from '../../config.js';
 
 export const UIReview = {
     // ============================================================
@@ -96,6 +97,17 @@ export const UIReview = {
 
     _getHeaderTemplate() {
         const r = this.state.result;
+        
+        // 🛡️ FIX: Resolve Subject Name
+        let subName = 'Review';
+        if (r.subject === 'mock_gs1') subName = 'GS Prelims Mock';
+        else if (r.subject === 'mock_csat') subName = 'CSAT Mock';
+        else {
+             const allSubs = [...(CONFIG.subjectsGS1||[]), ...(CONFIG.subjectsCSAT||[])];
+             const found = allSubs.find(s => s.id === r.subject);
+             if (found) subName = found.name;
+        }
+
         return `
         <div class="sticky top-0 z-30 px-4 py-4 bg-inherit backdrop-blur-md border-b border-white/5 flex items-center justify-between">
             <button onclick="Main.navigate('results', {id: '${r.id}'})" class="w-10 h-10 rounded-full premium-panel flex items-center justify-center opacity-60 hover:opacity-100 active:scale-95 transition-all">
@@ -103,7 +115,7 @@ export const UIReview = {
             </button>
             
             <div class="text-center">
-                <div class="text-[10px] font-bold opacity-50 uppercase tracking-widest">Reviewing</div>
+                <div class="text-[10px] font-bold opacity-50 uppercase tracking-widest">${subName}</div>
                 <div class="text-sm font-black premium-text-head tracking-wide">
                     ${r.score.toFixed(0)} / ${r.totalMarks}
                 </div>
@@ -151,7 +163,6 @@ export const UIReview = {
 
         this.state.questions.forEach((q, index) => {
             // 🛡️ FIX: Look up answer by INDEX, not ID
-            // The quiz engine stores answers as { 0: 1, 1: 3, ... } where key is question INDEX
             const userAnsIdx = (this.state.result.answers && this.state.result.answers[index] !== undefined) 
                 ? this.state.result.answers[index] 
                 : undefined;
@@ -184,6 +195,16 @@ export const UIReview = {
             statusIcon = '<i class="fa-solid fa-xmark text-rose-400"></i>';
         }
 
+        // 🛡️ NEW: Mock Subject Badge (Consistent with Quiz View)
+        let badgeHTML = '';
+        if (this.state.result.subject && this.state.result.subject.startsWith('mock_') && q.subject) {
+             const allSubs = [...(CONFIG.subjectsGS1||[]), ...(CONFIG.subjectsCSAT||[])];
+             const subConf = allSubs.find(s => s.id === q.subject);
+             if (subConf) {
+                 badgeHTML = `<div class="mb-2"><span class="px-2 py-1 rounded bg-${subConf.color}-500/10 text-${subConf.color}-400 text-[9px] font-bold uppercase tracking-wider"><i class="fa-solid fa-${subConf.icon} mr-1"></i> ${subConf.name}</span></div>`;
+             }
+        }
+
         // Generate Options
         const optionsHTML = q.options.map((opt, i) => {
             let optClass = 'opacity-60';
@@ -214,6 +235,7 @@ export const UIReview = {
                     <span class="w-8 h-8 rounded-lg premium-panel flex items-center justify-center text-lg border border-white/5">${statusIcon}</span>
                 </div>
             </div>
+            ${badgeHTML}
             <div class="text-sm font-medium leading-relaxed mb-6 opacity-90">${q.text}</div>
             <div class="mb-4">${optionsHTML}</div>
             <details class="group/exp">
