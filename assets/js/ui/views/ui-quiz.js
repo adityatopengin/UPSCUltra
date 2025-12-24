@@ -1,6 +1,6 @@
 /**
  * UI-QUIZ (THE EXAM HALL)
- * Version: 2.2.0 (Verified Syntax)
+ * Version: 2.9.0 (Patched: Source Badge + PYQ Identification)
  * Path: assets/js/ui/views/ui-quiz.js
  */
 
@@ -16,7 +16,6 @@ export const UIQuiz = {
         console.log("📝 UIQuiz: Entering Exam Hall...");
         
         container.innerHTML = '';
-        // REFACTOR: Removed bg-slate-900.
         container.className = 'view-container h-screen flex flex-col overflow-hidden';
 
         if (!Engine || !Engine.state) {
@@ -34,6 +33,7 @@ export const UIQuiz = {
             timer: document.getElementById('quiz-timer'),
             timerBar: document.getElementById('timer-bar'),
             questionText: document.getElementById('q-text'),
+            qBadge: document.getElementById('q-badge'), // Badge Container
             optionsContainer: document.getElementById('options-list'),
             qIndex: document.getElementById('q-index'),
             navGrid: document.getElementById('nav-grid'),
@@ -61,8 +61,6 @@ export const UIQuiz = {
     _getTemplate(config) {
         const color = config.color || 'blue';
         
-        // REFACTOR: Replaced bg-slate-900/50 with basic border/flex classes.
-        // Removed text-slate-200.
         return `
         <header class="h-16 px-4 flex items-center justify-between border-b border-white/5 z-20">
             <div class="flex items-center gap-3">
@@ -91,6 +89,7 @@ export const UIQuiz = {
         <main class="flex-1 overflow-y-auto overflow-x-hidden p-5 pb-32 relative">
             <div id="q-card" class="animate-slide-up">
                 <div class="mb-8">
+                    <div id="q-badge" class="hidden mb-3 flex flex-wrap gap-2"></div>
                     <p id="q-text" class="text-lg font-medium leading-relaxed">Loading...</p>
                 </div>
                 <div id="options-list" class="flex flex-col gap-3"></div>
@@ -122,6 +121,9 @@ export const UIQuiz = {
     },
 
     _getSubjectConfig(id) {
+        if (id === 'mock_gs1') return { name: 'GS Prelims Mock', color: 'amber', icon: 'trophy' };
+        if (id === 'mock_csat') return { name: 'CSAT Mock', color: 'purple', icon: 'flag-checkered' };
+
         const gs1 = CONFIG.subjectsGS1 || [];
         const csat = CONFIG.subjectsCSAT || [];
         let conf = gs1.find(s => s.id === id) || csat.find(s => s.id === id);
@@ -175,6 +177,39 @@ export const UIQuiz = {
 
         if (this.dom.qIndex) this.dom.qIndex.textContent = `Q ${currentIndex + 1} / ${questions.length}`;
         
+        // 🛡️ UPDATED: Multi-Badge Logic (Subject + Source)
+        if (this.dom.qBadge) {
+            let badgeHTML = '';
+
+            // 1. Subject Badge (Only relevant in Mocks where subjects are mixed)
+            if (Engine.state.subjectId && Engine.state.subjectId.startsWith('mock_') && q.subject) {
+                const subConf = this._getSubjectConfig(q.subject);
+                badgeHTML += `<span class="inline-flex items-center px-2 py-1 rounded bg-${subConf.color}-500/10 text-${subConf.color}-400 text-[10px] font-bold uppercase tracking-wider border border-${subConf.color}-500/20">
+                    <i class="fa-solid fa-${subConf.icon} mr-1"></i> ${subConf.name}
+                </span>`;
+            }
+
+            // 2. Source Badge (e.g., "UPSC 2022" vs "Mock")
+            if (q.source) {
+                const isPYQ = q.source.toLowerCase().includes('upsc') || q.source.toLowerCase().includes('pyq');
+                // PYQ = Red/Rose (Official/Serious), Mock = Cyan/Blue (Practice/Experimental)
+                const color = isPYQ ? 'rose' : 'cyan';
+                const icon = isPYQ ? 'building-columns' : 'flask';
+                
+                badgeHTML += `<span class="inline-flex items-center px-2 py-1 rounded bg-${color}-500/10 text-${color}-400 text-[10px] font-bold uppercase tracking-wider border border-${color}-500/20">
+                    <i class="fa-solid fa-${icon} mr-1"></i> ${q.source}
+                </span>`;
+            }
+
+            // Render
+            if (badgeHTML) {
+                this.dom.qBadge.innerHTML = badgeHTML;
+                this.dom.qBadge.classList.remove('hidden');
+            } else {
+                this.dom.qBadge.classList.add('hidden');
+            }
+        }
+
         if (this.dom.questionText) {
             this.dom.questionText.classList.remove('animate-fade-in');
             void this.dom.questionText.offsetWidth; 
@@ -207,14 +242,14 @@ export const UIQuiz = {
     _renderOptions(index) {
         if (!this.dom.optionsContainer) return;
         const q = Engine.state.questions[index];
-        const selectedOption = Engine.state.answers[q.id];
+        // 🛡️ FIX: Look up answer by INDEX, not ID
+        const selectedOption = Engine.state.answers[index];
 
         this.dom.optionsContainer.innerHTML = '';
 
         q.options.forEach((optText, i) => {
             const isSelected = selectedOption === i;
             const btn = document.createElement('button');
-            // REFACTOR: Replaced bg-slate-800 with premium-panel logic
             const bgClass = isSelected ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' : 'premium-panel opacity-90 hover:opacity-100 hover:border-white/20';
             
             btn.className = `w-full text-left p-4 rounded-xl relative transition-all duration-200 group ${bgClass}`;
@@ -277,11 +312,10 @@ export const UIQuiz = {
         const { questions, currentIndex, answers, bookmarks } = Engine.state;
 
         questions.forEach((q, index) => {
-            const isAnswered = answers[q.id] !== undefined;
+            const isAnswered = answers[index] !== undefined;
             const isCurrent = index === currentIndex;
             const isBookmarked = bookmarks.has(q.id);
             
-            // REFACTOR: Replaced bg-slate-800 with premium-panel logic
             let bgClass = 'premium-panel opacity-60';
             if (isCurrent) bgClass = 'bg-white text-blue-900 ring-2 ring-blue-500';
             else if (isAnswered) bgClass = 'bg-blue-600 text-white border-blue-500';
@@ -321,5 +355,4 @@ export const UIQuiz = {
 };
 
 window.UIQuiz = UIQuiz;
-
 
