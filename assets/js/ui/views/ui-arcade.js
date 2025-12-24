@@ -1,11 +1,11 @@
 /**
  * UI-ARCADE (THE BRAIN GYM)
- * Version: 2.1.0 (Fixed Canvas Cleanup & Memory Leaks)
+ * Version: 2.2.0 (Audio-Visual Polish & Haptics)
  * Path: assets/js/ui/views/ui-arcade.js
  * Responsibilities:
  * 1. Renders the Arcade Dashboard (Game Selection).
  * 2. Manages the "Game Shell" (Canvas, Score, Timer).
- * 3. Contains logic for 3 Mini-Games: Blink, Pressure, Pattern.
+ * 3. Contains logic for 3 Mini-Games with Sound & Haptics.
  */
 
 import { CONFIG } from '../../config.js';
@@ -23,7 +23,8 @@ export const UIArcade = {
         isPlaying: false,
         timer: null,
         interval: null,
-        ctx: null // Canvas Context for visual games
+        ctx: null, // Canvas Context for visual games
+        audioCtx: null // Web Audio API Context
     },
 
     // ============================================================
@@ -35,20 +36,26 @@ export const UIArcade = {
         
         // 1. Clear & Setup
         container.innerHTML = '';
-        // REFACTOR: Removed bg-slate-900. Increased padding to pb-40.
         container.className = 'view-container pb-40 min-h-screen';
 
         // 2. Render Dashboard (Menu)
         container.innerHTML = this._getDashboardTemplate();
 
-        // 3. Bind Dashboard Events
-        // (Delegated listeners for game selection)
+        // 3. Init Audio Context (User gesture required later)
+        if (!this.state.audioCtx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) this.state.audioCtx = new AudioContext();
+        }
     },
 
-    // 🛡️ FIX: Added Cleanup Hook to prevent Ghosting
+    // Cleanup Hook to prevent Ghosting
     onUnmount() {
         console.log("🎮 UIArcade: Unmounting & Cleaning up...");
         this._cleanupGame();
+        if (this.state.audioCtx) {
+            this.state.audioCtx.close();
+            this.state.audioCtx = null;
+        }
     },
 
     /**
@@ -58,7 +65,6 @@ export const UIArcade = {
         // Fetch modes from CONFIG.arcadeModes
         const modes = CONFIG.arcadeModes || [];
 
-        // REFACTOR: Replaced glass-card with premium-card. Removed dynamic bg color classes for text/border.
         const cardsHTML = modes.map(mode => `
             <button onclick="UIArcade.launchGame('${mode.id}')" class="premium-card w-full p-6 text-left group relative overflow-hidden transition-all duration-300 hover:scale-[1.02]">
                 
@@ -79,7 +85,6 @@ export const UIArcade = {
             </button>
         `).join('');
 
-        // REFACTOR: Replaced header styling with standard premium header
         return `
         <header class="sticky top-0 z-30 px-6 py-4 flex items-center justify-between safe-area-pt">
             <div>
@@ -101,6 +106,7 @@ export const UIArcade = {
         </main>
         `;
     },
+
     // ============================================================
     // 3. GAME LAUNCHER (THE ARENA)
     // ============================================================
@@ -111,13 +117,17 @@ export const UIArcade = {
         // Ensure clean state before starting
         this._cleanupGame();
 
+        // Resume Audio Context (Browser policy requires gesture)
+        if (this.state.audioCtx && this.state.audioCtx.state === 'suspended') {
+            this.state.audioCtx.resume();
+        }
+
         this.state.activeGameId = gameId;
         this.state.score = 0;
         this.state.isPlaying = true;
 
         // 1. Hide Dashboard / Show Game Shell
         const app = document.getElementById('app-container');
-        // We replace the entire view content with the game shell
         app.innerHTML = this._getGameShellTemplate(gameId);
 
         // 2. Cache DOM Elements
@@ -138,18 +148,12 @@ export const UIArcade = {
     },
 
     quitGame() {
-        // Stop Loops and Clear Canvas
         this._cleanupGame();
-
-        // Restore UI
         if (window.UIHeader) UIHeader.toggle(true);
-        
-        // Go back to Menu
         const app = document.getElementById('app-container');
         this.render(app);
     },
 
-    // 🛡️ FIX: Internal Cleanup Helper
     _cleanupGame() {
         this.state.isPlaying = false;
         
@@ -162,7 +166,6 @@ export const UIArcade = {
             this.state.timer = null;
         }
 
-        // Canvas Cleanup
         const canvas = document.getElementById('game-canvas');
         if (canvas) {
             const ctx = canvas.getContext('2d');
@@ -172,15 +175,70 @@ export const UIArcade = {
     },
 
     // ============================================================
-    // 4. TEMPLATE: GAME SHELL
+    // 4. SOUND & HAPTICS ENGINE (NEW)
+    // ============================================================
+
+    _playSound(type) {
+        if (!this.state.audioCtx) return;
+
+        const ctx = this.state.audioCtx;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+
+        if (type === 'pop') {
+            // Success Pop (High Pitch Short)
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        } 
+        else if (type === 'error') {
+            // Error Buzz (Low Pitch Sawtooth)
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+        else if (type === 'level-up') {
+            // Level Up (Arpeggio)
+            this._playSound('pop');
+            setTimeout(() => this._playSound('pop'), 100);
+            setTimeout(() => this._playSound('pop'), 200);
+        }
+        else if (type === 'tick') {
+            // Clock Tick
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, now);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+        }
+    },
+
+    _vibrate(pattern) {
+        if (navigator.vibrate) {
+            navigator.vibrate(pattern);
+        }
+    },
+
+    // ============================================================
+    // 5. TEMPLATE: GAME SHELL
     // ============================================================
 
     _getGameShellTemplate(gameId) {
-        // Find config
         const config = CONFIG.arcadeModes.find(m => m.id === gameId);
-        const color = config ? config.color : 'blue';
-
-        // REFACTOR: Replaced bg-slate-900 with premium-card (fullscreen mode effectively)
+        
         return `
         <div class="fixed inset-0 z-50 view-container flex flex-col">
             
@@ -229,33 +287,30 @@ export const UIArcade = {
         const canvas = document.getElementById('game-canvas');
         if (canvas) canvas.classList.remove('opacity-0');
 
-        // Logic split by game type (Part 3)
+        this._playSound('level-up'); // Start sound
+
         if (this.state.activeGameId === 'blink_test') this._runBlinkLoop();
-        // ... others
+        if (this.state.activeGameId === 'pressure_valve') this._runPressureLoop();
+        if (this.state.activeGameId === 'pattern_architect') this._startPatternLevel();
     },
+
     // ============================================================
-    // 5. MINI-GAME: BLINK TEST (REACTION SPEED)
+    // 6. MINI-GAME: BLINK TEST (REACTION SPEED)
     // ============================================================
 
     _initBlinkTest() {
-        // Setup initial state specific to Blink Test
         this.gameData = {
             lives: 3,
             spawnRate: 2000,
             targetsClicked: 0
         };
-        // Reset Visuals
         if (this.dom.timer) this.dom.timer.style.width = '100%';
     },
 
     _runBlinkLoop() {
-        // Clear any existing targets
         this.dom.container.innerHTML = ''; 
-        
-        // Start the Spawn Cycle
         this._spawnBlinkTarget();
 
-        // Start Global Timer (Game lasts 60s max or until lives lost)
         let timeLeft = 60;
         this.state.interval = setInterval(() => {
             if (!this.state.isPlaying) return;
@@ -264,7 +319,6 @@ export const UIArcade = {
             const pct = (timeLeft / 60) * 100;
             if (this.dom.timer) this.dom.timer.style.width = `${pct}%`;
 
-            // Increase Difficulty every 10 seconds
             if (timeLeft % 10 === 0) {
                 this.gameData.spawnRate = Math.max(600, this.gameData.spawnRate - 200);
             }
@@ -276,53 +330,47 @@ export const UIArcade = {
     _spawnBlinkTarget() {
         if (!this.state.isPlaying) return;
 
-        // Calculate Random Position (Safe Zone)
         const container = this.dom.container;
-        const maxX = container.clientWidth - 80; // 80px buffer
+        const maxX = container.clientWidth - 80; 
         const maxY = container.clientHeight - 80;
         
         const x = Math.random() * maxX + 40;
         const y = Math.random() * maxY + 40;
 
-        // Create Target Element
         const target = document.createElement('div');
         target.className = 'absolute w-16 h-16 rounded-full bg-cyan-500 shadow-[0_0_20px_currentColor] cursor-pointer active:scale-90 transition-transform animate-pulse';
         target.style.left = `${x}px`;
         target.style.top = `${y}px`;
 
-        // Interaction Logic
         const spawnTime = Date.now();
         let clicked = false;
 
         target.onmousedown = (e) => {
-            e.stopPropagation(); // Prevent container clicks
+            e.stopPropagation();
             clicked = true;
             
-            // Calculate Points based on Reaction Time
+            this._playSound('pop');
+            this._vibrate(10); // Haptic
+
             const reactionTime = Date.now() - spawnTime;
             let points = 100;
-            if (reactionTime < 600) points += 50; // Speed Bonus
-            if (reactionTime < 400) points += 100; // Godlike Bonus
+            if (reactionTime < 600) points += 50; 
+            if (reactionTime < 400) points += 100;
 
             this._addScore(points);
             this._showFloatingText(x, y, `+${points}`);
 
-            // Remove and Schedule Next
             target.remove();
             clearTimeout(despawnTimer);
-            
-            // Randomize next spawn time slightly
             setTimeout(() => this._spawnBlinkTarget(), Math.random() * 500 + 200);
         };
 
         container.appendChild(target);
 
-        // Despawn Timer (Missed Target)
         const despawnTimer = setTimeout(() => {
             if (!clicked && this.state.isPlaying) {
                 target.remove();
                 this._handleMiss();
-                // Respawn immediately
                 this._spawnBlinkTarget();
             }
         }, this.gameData.spawnRate);
@@ -330,8 +378,9 @@ export const UIArcade = {
 
     _handleMiss() {
         this.gameData.lives--;
-        
-        // Visual Feedback (Screen Flash)
+        this._playSound('error');
+        this._vibrate([50, 50, 50]); // Heavy haptic
+
         const flash = document.createElement('div');
         flash.className = 'absolute inset-0 bg-rose-500/30 z-40 pointer-events-none animate-fade-in';
         this.dom.container.appendChild(flash);
@@ -344,18 +393,17 @@ export const UIArcade = {
 
     _addScore(pts) {
         this.state.score += pts;
-        // Animate Score Counter
         if (this.dom.score) {
             this.dom.score.textContent = this.state.score;
             this.dom.score.classList.remove('scale-110');
-            void this.dom.score.offsetWidth; // Trigger reflow
+            void this.dom.score.offsetWidth; 
             this.dom.score.classList.add('scale-110');
         }
     },
 
-    _showFloatingText(x, y, text) {
+    _showFloatingText(x, y, text, colorClass = "text-cyan-300") {
         const float = document.createElement('div');
-        float.className = 'absolute text-cyan-300 font-black text-xl pointer-events-none animate-slide-up';
+        float.className = `absolute ${colorClass} font-black text-xl pointer-events-none animate-slide-up`;
         float.style.left = `${x}px`;
         float.style.top = `${y - 20}px`;
         float.textContent = text;
@@ -366,27 +414,24 @@ export const UIArcade = {
     _endGame(win) {
         this.state.isPlaying = false;
         clearInterval(this.state.interval);
-        
-        // Show Game Over Modal
+        this._playSound('error');
         alert(`Game Over! Score: ${this.state.score}`);
         this.quitGame();
     },
+
     // ============================================================
-    // 6. MINI-GAME: PRESSURE VALVE (STRESS MANAGEMENT)
+    // 7. MINI-GAME: PRESSURE VALVE (STRESS MANAGEMENT)
     // ============================================================
 
     _initPressureValve() {
         this.gameData = {
-            pressure: 50, // Starts at 50%
-            riseRate: 0.2, // Increases over time
+            pressure: 50,
+            riseRate: 0.2,
             currentQ: null
         };
         
-        // Setup UI for Pressure Valve
-        // REFACTOR: Replaced glass-card with premium-card
         this.dom.container.innerHTML = `
             <div class="flex flex-col items-center gap-8 w-full max-w-md px-6">
-                
                 <div class="w-full h-6 premium-panel rounded-full relative overflow-hidden">
                     <div id="pressure-bar" class="h-full bg-gradient-to-r from-emerald-500 via-yellow-500 to-rose-600 transition-all duration-100 ease-linear" style="width: 50%"></div>
                     <div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest shadow-black drop-shadow-md">System Pressure</div>
@@ -408,42 +453,36 @@ export const UIArcade = {
             </div>
         `;
         
-        // Start Loops
         this._runPressureLoop();
     },
 
     _runPressureLoop() {
         this._spawnPressureQuestion();
 
-        // The Pressure Loop (Runs 60fps equivalent)
         this.state.interval = setInterval(() => {
             if (!this.state.isPlaying) return;
 
-            // 1. Increase Pressure
             this.gameData.pressure += this.gameData.riseRate;
             
-            // 2. Update Visuals
             const bar = document.getElementById('pressure-bar');
             if (bar) {
                 bar.style.width = `${Math.min(100, this.gameData.pressure)}%`;
                 
-                // Visual Alarm (Flash Red if > 80%)
                 if (this.gameData.pressure > 80) {
                     bar.parentElement.classList.add('ring-2', 'ring-rose-500', 'animate-pulse');
+                    if (Math.random() > 0.8) this._playSound('tick'); // Panic tick
                 } else {
                     bar.parentElement.classList.remove('ring-2', 'ring-rose-500', 'animate-pulse');
                 }
             }
 
-            // 3. Check Game Over
             if (this.gameData.pressure >= 100) {
                 this._endGame(false);
             }
-        }, 100); // Updates every 100ms
+        }, 100);
     },
 
     _spawnPressureQuestion() {
-        // Generate Simple Math (A +/- B = C)
         const ops = ['+', '-'];
         const op = ops[Math.floor(Math.random() * ops.length)];
         const a = Math.floor(Math.random() * 20) + 1;
@@ -453,16 +492,13 @@ export const UIArcade = {
         if (op === '+') correctResult = a + b;
         else correctResult = a - b;
 
-        // Coin flip: Should we show the correct answer or a fake one?
         const isTruth = Math.random() > 0.5;
         let displayedResult = isTruth ? correctResult : correctResult + (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
 
         this.gameData.currentQ = { isTruth };
 
-        // Update UI
         const el = document.getElementById('pv-equation');
         if (el) {
-            // Tiny animation for new question
             el.classList.remove('animate-fade-in');
             void el.offsetWidth;
             el.classList.add('animate-fade-in');
@@ -476,20 +512,18 @@ export const UIArcade = {
         const isCorrect = userSaidTrue === this.gameData.currentQ.isTruth;
 
         if (isCorrect) {
-            // Reward: Release Pressure & Add Score
+            this._playSound('pop');
+            this._vibrate(10);
             this.gameData.pressure = Math.max(0, this.gameData.pressure - 15);
             this._addScore(100);
-            
-            // Increase difficulty slightly
             this.gameData.riseRate += 0.02;
-            
             this._showFloatingText(window.innerWidth / 2, window.innerHeight / 2, "RELIEF!", "text-emerald-400");
         } else {
-            // Penalty: Spike Pressure
+            this._playSound('error');
+            this._vibrate(100);
             this.gameData.pressure += 15;
             this._showFloatingText(window.innerWidth / 2, window.innerHeight / 2, "FAIL!", "text-rose-500");
             
-            // Shake Effect
             const card = document.getElementById('pv-card');
             if (card) {
                 card.classList.add('translate-x-2');
@@ -497,24 +531,22 @@ export const UIArcade = {
             }
         }
 
-        // Next Question
         this._spawnPressureQuestion();
     },
+
     // ============================================================
-    // 7. MINI-GAME: PATTERN ARCHITECT (MEMORY & FLUID IQ)
+    // 8. MINI-GAME: PATTERN ARCHITECT (MEMORY & FLUID IQ)
     // ============================================================
 
     _initPatternArchitect() {
         this.gameData = {
             level: 1,
-            gridSize: 3, // Starts 3x3
+            gridSize: 3, 
             sequence: [],
             userIndex: 0,
             isShowingPattern: false
         };
 
-        // Render Grid Container
-        // REFACTOR: Replaced bg-slate-800 with premium-panel
         this.dom.container.innerHTML = `
             <div class="flex flex-col items-center gap-6">
                 <div class="text-sm font-bold opacity-60 uppercase tracking-widest">
@@ -532,15 +564,11 @@ export const UIArcade = {
     },
 
     _startPatternLevel() {
-        // 1. Setup Grid Size based on level
-        // Level 1-3: 3x3, Level 4-6: 4x4, Level 7+: 5x5
         if (this.gameData.level > 3) this.gameData.gridSize = 4;
         if (this.gameData.level > 6) this.gameData.gridSize = 5;
 
         this._renderPatternGrid();
 
-        // 2. Generate Sequence
-        // Length = Level + 2 (Level 1 = 3 steps)
         const seqLength = this.gameData.level + 2;
         this.gameData.sequence = [];
         const totalCells = this.gameData.gridSize * this.gameData.gridSize;
@@ -552,7 +580,6 @@ export const UIArcade = {
         this.gameData.userIndex = 0;
         this.gameData.isShowingPattern = true;
 
-        // 3. Play Sequence (after short delay)
         setTimeout(() => this._playSequence(), 1000);
     },
 
@@ -567,22 +594,16 @@ export const UIArcade = {
         
         for (let i = 0; i < totalCells; i++) {
             const cell = document.createElement('div');
-            // ID stored in dataset for easy checking
             cell.dataset.index = i;
-            // REFACTOR: Replaced bg-slate-700 with premium-panel
             cell.className = `
                 w-16 h-16 rounded-xl premium-panel border border-white/5 
                 transition-all duration-200 cursor-pointer 
                 active:scale-90 hover:opacity-80
             `;
-            
-            // Interaction
             cell.onclick = () => this._handlePatternClick(i, cell);
-            
             grid.appendChild(cell);
         }
 
-        // Update Level Text
         const lvl = document.getElementById('pa-level');
         if (lvl) lvl.textContent = this.gameData.level;
     },
@@ -601,11 +622,12 @@ export const UIArcade = {
             const cell = cells[targetIndex];
 
             // Flash ON
-            await new Promise(r => setTimeout(r, 200)); // Gap
+            this._playSound('tick');
+            await new Promise(r => setTimeout(r, 200)); 
             cell.className = 'w-16 h-16 rounded-xl bg-white shadow-[0_0_20px_white] scale-105 transition-all duration-100';
             
             // Flash OFF
-            await new Promise(r => setTimeout(r, 600)); // Duration
+            await new Promise(r => setTimeout(r, 600)); 
             cell.className = 'w-16 h-16 rounded-xl premium-panel border border-white/5 transition-all duration-200';
         }
 
@@ -619,8 +641,9 @@ export const UIArcade = {
         const expected = this.gameData.sequence[this.gameData.userIndex];
 
         if (index === expected) {
-            // Correct
-            // Flash Green
+            this._playSound('pop');
+            this._vibrate(10);
+            
             cellElement.classList.remove('premium-panel');
             cellElement.classList.add('bg-emerald-500', 'shadow-[0_0_15px_#10b981]');
             setTimeout(() => {
@@ -630,22 +653,22 @@ export const UIArcade = {
 
             this.gameData.userIndex++;
 
-            // Check Level Completion
             if (this.gameData.userIndex >= this.gameData.sequence.length) {
                 this._addScore(this.gameData.level * 100);
+                this._playSound('level-up');
                 this.gameData.level++;
                 this._showFloatingText(window.innerWidth/2, window.innerHeight/2, "LEVEL UP!", "text-yellow-400");
                 
                 setTimeout(() => this._startPatternLevel(), 1000);
             }
         } else {
-            // Wrong -> Game Over
+            this._playSound('error');
+            this._vibrate(200);
             cellElement.classList.add('bg-rose-500', 'shake');
             this._endGame(false);
         }
     }
 };
 
-// Global Exposure
 window.UIArcade = UIArcade;
 
