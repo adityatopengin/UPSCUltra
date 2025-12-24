@@ -1,6 +1,6 @@
 /**
  * UI-REVIEW (MISTAKE ANALYSIS)
- * Version: 1.0.0
+ * Version: 2.0.0 (Fixed Answer Lookup)
  * Path: assets/js/ui/views/ui-review.js
  * Responsibilities:
  * 1. Fetches the Exam Result and the original Questions.
@@ -28,7 +28,6 @@ export const UIReview = {
         console.log("🧐 UIReview: Opening Inspection...");
         
         container.innerHTML = '';
-        // REFACTOR: Removed bg-slate-900. Increased padding to pb-40.
         container.className = 'view-container pb-40 min-h-screen';
 
         const resultId = this._getResultId();
@@ -45,192 +44,173 @@ export const UIReview = {
             this._renderInterface(container);
 
         } catch (e) {
-            console.error("UIReview: Load Failed", e);
-            this._renderError(container, "Could not load review data. " + e.message);
+            console.error(e);
+            this._renderError(container, "Failed to load review data.");
         }
-    },
-
-    // ============================================================
-    // 3. DATA FETCHING
-    // ============================================================
-
-    async _loadReviewData(resultId) {
-        let result = window.Main && window.Main.state ? window.Main.state.lastResult : null;
-        
-        if (!result || result.id !== resultId) {
-            result = await DB.get('history', resultId);
-        }
-
-        if (!result) throw new Error("Result record missing.");
-        this.state.result = result;
-
-        // Use mock generator if DB questions are missing (Safety Fallback)
-        this.state.questions = await this._fetchOrGenerateQuestions(result.subject, (result.totalMarks || 30) / 2);
-    },
-
-    async _fetchOrGenerateQuestions(subjectId, count) {
-        return Array.from({ length: count }, (_, i) => ({
-            id: `q_${subjectId}_${i}`,
-            text: `Question ${i + 1} for ${subjectId}. <br> What is the correct answer?`,
-            options: [
-                "This is the wrong answer",
-                "This is the correct answer (Option B)",
-                "Another wrong answer",
-                "Definitely not this one"
-            ],
-            correctAnswer: 1, 
-            explanation: "Option B is correct because this is a mock explanation generated for testing purposes.",
-            index: i
-        }));
     },
 
     _getResultId() {
-        if (window.Main && window.Main.state && window.Main.state.lastResultId) return window.Main.state.lastResultId;
+        if (window.Main && window.Main.state && window.Main.state.lastResultId) {
+            return window.Main.state.lastResultId;
+        }
+        // Fallback to URL hash
         const hash = window.location.hash;
         if (hash.includes('?id=')) return hash.split('?id=')[1];
+        if (window.Main && window.Main.state && window.Main.state.lastResult) {
+            return window.Main.state.lastResult.id;
+        }
         return null;
     },
 
+    async _loadReviewData(id) {
+        // 1. Try Memory
+        if (window.Main && window.Main.state.lastResult && window.Main.state.lastResult.id === id) {
+            this.state.result = window.Main.state.lastResult;
+        } else {
+            // 2. Fetch DB
+            this.state.result = await DB.get('history', id);
+        }
+
+        if (!this.state.result) throw new Error("Result not found in DB");
+
+        // 3. Hydrate Questions
+        // The result object should contain the snapshot of questions used
+        this.state.questions = this.state.result.questions || [];
+    },
+
     // ============================================================
-    // 4. RENDER CONTROLLER
+    // 3. RENDER INTERFACE
     // ============================================================
 
     _renderInterface(container) {
         container.innerHTML = `
             ${this._getHeaderTemplate()}
-            ${this._getFilterBarTemplate()}
-            <div id="review-list" class="p-4 space-y-4 animate-slide-up"></div>
+            ${this._getFilterTabsTemplate()}
+            <div id="review-list" class="px-4 space-y-6 animate-slide-up">
+                </div>
+            ${this._getFooterTemplate()}
         `;
-        this._renderQuestionsList();
+
+        this._applyFilter('all'); // Default load
     },
-
-    _renderQuestionsList() {
-        const container = document.getElementById('review-list');
-        if (!container) return;
-
-        container.innerHTML = '';
-        
-        const filtered = this.state.questions.map((q, index) => {
-            const userAnswer = this.state.result.answers ? this.state.result.answers[q.id] : undefined;
-            
-            let status = 'skipped';
-            if (userAnswer === q.correctAnswer) status = 'correct';
-            else if (userAnswer !== undefined) status = 'wrong';
-
-            return { ...q, userAnswer, status, index };
-        }).filter(item => {
-            if (this.state.filter === 'all') return true;
-            return item.status === this.state.filter;
-        });
-
-        if (filtered.length === 0) {
-            container.innerHTML = `<div class="text-center opacity-50 py-10 font-bold uppercase text-xs">No questions found for this filter.</div>`;
-            return;
-        }
-
-        filtered.forEach(q => {
-            container.innerHTML += this._getQuestionCardTemplate(q);
-        });
-    },
-
-    setFilter(filterType) {
-        this.state.filter = filterType;
-        // Logic kept intact, but classes align with new design system implicitly
-        document.querySelectorAll('.filter-tab').forEach(btn => {
-            if (btn.dataset.filter === filterType) {
-                btn.classList.add('bg-blue-600', 'text-white');
-                btn.classList.remove('opacity-50', 'border-transparent');
-                btn.classList.add('border-blue-500'); 
-            } else {
-                btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-500');
-                btn.classList.add('opacity-50', 'border-transparent');
-            }
-        });
-        this._renderQuestionsList();
-    },
-
-    // ============================================================
-    // 5. TEMPLATES
-    // ============================================================
 
     _getHeaderTemplate() {
-        // REFACTOR: Removed bg-slate-900.
+        const r = this.state.result;
         return `
-        <div class="sticky top-0 z-30 px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <button onclick="Main.navigate('results')" class="w-8 h-8 rounded-full premium-panel flex items-center justify-center active:scale-95 transition-transform hover:opacity-100 opacity-60">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </button>
-                <div>
-                    <h2 class="premium-text-head text-sm font-black uppercase tracking-wide">Review Answers</h2>
-                    <div class="text-[10px] font-bold opacity-50 uppercase">
-                        ${this.state.result.subject} &bull; ${this.state.result.score.toFixed(1)} Marks
-                    </div>
+        <div class="sticky top-0 z-30 px-4 py-4 bg-inherit backdrop-blur-md border-b border-white/5 flex items-center justify-between">
+            <button onclick="Main.navigate('results', {id: '${r.id}'})" class="w-10 h-10 rounded-full premium-panel flex items-center justify-center opacity-60 hover:opacity-100 active:scale-95 transition-all">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            
+            <div class="text-center">
+                <div class="text-[10px] font-bold opacity-50 uppercase tracking-widest">Reviewing</div>
+                <div class="text-sm font-black premium-text-head tracking-wide">
+                    ${r.score.toFixed(0)} / ${r.totalMarks}
                 </div>
             </div>
+            
+            <div class="w-10"></div> 
         </div>`;
     },
 
-    _getFilterBarTemplate() {
-        const r = this.state.result;
-        // REFACTOR: Replaced specific bg colors with premium-panel style for inactive tabs
+    _getFilterTabsTemplate() {
         return `
-        <div class="p-4 pb-0 overflow-x-auto no-scrollbar flex gap-2">
-            <button onclick="UIReview.setFilter('all')" data-filter="all" class="filter-tab px-4 py-2 rounded-full bg-blue-600 text-white text-xs font-bold uppercase whitespace-nowrap transition-colors shadow-lg border border-blue-500">
-                All <span class="ml-1 opacity-70 bg-black/20 px-1.5 rounded-full text-[9px]">${this.state.questions.length}</span>
+        <div class="flex p-4 gap-2 overflow-x-auto no-scrollbar">
+            <button onclick="UIReview._applyFilter('all')" id="filter-all" class="filter-btn active px-4 py-2 rounded-full premium-panel border border-white/10 text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all">
+                All Questions
             </button>
-            <button onclick="UIReview.setFilter('wrong')" data-filter="wrong" class="filter-tab px-4 py-2 rounded-full premium-panel opacity-50 text-xs font-bold uppercase whitespace-nowrap transition-colors border border-transparent">
-                Wrong <span class="ml-1 opacity-70 bg-white/10 px-1.5 rounded-full text-[9px] text-rose-400">${r.wrong}</span>
+            <button onclick="UIReview._applyFilter('wrong')" id="filter-wrong" class="filter-btn px-4 py-2 rounded-full premium-panel border border-white/10 text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all text-rose-400">
+                Mistakes (${this.state.result.wrong})
             </button>
-            <button onclick="UIReview.setFilter('correct')" data-filter="correct" class="filter-tab px-4 py-2 rounded-full premium-panel opacity-50 text-xs font-bold uppercase whitespace-nowrap transition-colors border border-transparent">
-                Correct <span class="ml-1 opacity-70 bg-white/10 px-1.5 rounded-full text-[9px] text-emerald-400">${r.correct}</span>
+            <button onclick="UIReview._applyFilter('correct')" id="filter-correct" class="filter-btn px-4 py-2 rounded-full premium-panel border border-white/10 text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all text-emerald-400">
+                Correct (${this.state.result.correct})
+            </button>
+            <button onclick="UIReview._applyFilter('skipped')" id="filter-skipped" class="filter-btn px-4 py-2 rounded-full premium-panel border border-white/10 text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all opacity-60">
+                Skipped
             </button>
         </div>`;
     },
 
-    _getQuestionCardTemplate(q) {
-        let borderColor = 'border-transparent';
-        let statusIcon = '<i class="fa-solid fa-minus opacity-50"></i>';
+    _applyFilter(type) {
+        this.state.filter = type;
         
-        if (q.status === 'correct') {
-            borderColor = 'border-emerald-500/50';
-            statusIcon = '<i class="fa-solid fa-check text-emerald-500"></i>';
-        } else if (q.status === 'wrong') {
-            borderColor = 'border-rose-500/50';
-            statusIcon = '<i class="fa-solid fa-xmark text-rose-500"></i>';
+        // Update Buttons
+        document.querySelectorAll('.filter-btn').forEach(b => {
+            b.classList.remove('bg-white/10', 'border-white/30');
+            b.classList.add('opacity-60');
+        });
+        const activeBtn = document.getElementById(`filter-${type}`);
+        if(activeBtn) {
+            activeBtn.classList.add('bg-white/10', 'border-white/30');
+            activeBtn.classList.remove('opacity-60');
         }
 
-        const optionsHTML = q.options.map((opt, idx) => {
-            const isCorrect = idx === q.correctAnswer;
-            const isSelected = idx === q.userAnswer;
-            
-            // REFACTOR: Replaced bg-slate-800 with premium-panel logic
-            let bgClass = "premium-panel opacity-60 border-transparent";
-            let iconClass = "bg-white/10 opacity-50";
+        // Render List
+        const list = document.getElementById('review-list');
+        list.innerHTML = '';
 
-            if (isCorrect) {
-                bgClass = "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 opacity-100";
-                iconClass = "bg-emerald-500 text-white opacity-100";
-            } else if (isSelected && !isCorrect) {
-                bgClass = "bg-rose-500/10 text-rose-300 border-rose-500/30 opacity-100";
-                iconClass = "bg-rose-500 text-white opacity-100";
+        this.state.questions.forEach((q, index) => {
+            // 🛡️ FIX: Look up answer by INDEX, not ID
+            // The quiz engine stores answers as { 0: 1, 1: 3, ... } where key is question INDEX
+            const userAnsIdx = (this.state.result.answers && this.state.result.answers[index] !== undefined) 
+                ? this.state.result.answers[index] 
+                : undefined;
+
+            let status = 'skipped';
+            if (userAnsIdx !== undefined) {
+                status = (userAnsIdx === q.correctAnswer) ? 'correct' : 'wrong';
             }
 
-            return `
-                <div class="p-3 rounded-lg border ${bgClass} flex items-start gap-3 mb-2 text-sm transition-colors">
-                    <div class="w-5 h-5 rounded-full ${iconClass} flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">${String.fromCharCode(65 + idx)}</div>
-                    <div class="leading-snug">${opt}</div>
-                    ${isSelected ? '<span class="ml-auto text-[9px] font-bold uppercase opacity-70 tracking-wider mt-1">You</span>' : ''}
-                </div>
-            `;
+            // Filter Logic
+            if (type !== 'all' && type !== status) return;
+
+            list.innerHTML += this._getQuestionCard(q, index, status, userAnsIdx);
+        });
+
+        if (list.innerHTML === '') {
+            list.innerHTML = `<div class="p-8 text-center opacity-40 text-xs font-bold uppercase tracking-widest">No questions found in this category.</div>`;
+        }
+    },
+
+    _getQuestionCard(q, index, status, userAnsIdx) {
+        let borderClass = 'border-white/5';
+        let statusIcon = '<i class="fa-solid fa-minus text-slate-500"></i>';
+        
+        if (status === 'correct') {
+            borderClass = 'border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]';
+            statusIcon = '<i class="fa-solid fa-check text-emerald-400"></i>';
+        } else if (status === 'wrong') {
+            borderClass = 'border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.1)]';
+            statusIcon = '<i class="fa-solid fa-xmark text-rose-400"></i>';
+        }
+
+        // Generate Options
+        const optionsHTML = q.options.map((opt, i) => {
+            let optClass = 'opacity-60';
+            let icon = '';
+
+            // Logic to highlight Correct and User Selection
+            if (i === q.correctAnswer) {
+                optClass = 'text-emerald-400 font-bold opacity-100 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2 py-1';
+                icon = '<i class="fa-solid fa-check ml-2"></i>';
+            } 
+            
+            if (i === userAnsIdx && i !== q.correctAnswer) {
+                optClass = 'text-rose-400 font-bold opacity-100 bg-rose-500/10 border border-rose-500/20 rounded-lg px-2 py-1';
+                icon = '<i class="fa-solid fa-xmark ml-2"></i>';
+            }
+
+            return `<div class="text-xs mb-1.5 ${optClass} flex justify-between items-center">
+                <span><span class="opacity-50 mr-2">${String.fromCharCode(65+i)}.</span> ${opt}</span>
+                ${icon}
+            </div>`;
         }).join('');
 
-        // REFACTOR: Replaced bg-slate-800/50 with premium-card
         return `
-        <div class="premium-card p-5 rounded-[20px] border ${borderColor} relative overflow-hidden group">
-            <div class="flex justify-between items-start mb-4">
-                <div class="flex items-center gap-3">
-                    <span class="w-8 h-8 rounded-lg premium-panel flex items-center justify-center text-sm font-bold opacity-80 border border-white/5">${q.index + 1}</span>
+        <div class="premium-card p-5 rounded-[24px] border ${borderClass} animate-fade-in relative group">
+            <div class="flex justify-between items-start mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-md flex items-center justify-center text-sm font-bold opacity-80 border border-white/5">${index + 1}</span>
                     <span class="w-8 h-8 rounded-lg premium-panel flex items-center justify-center text-lg border border-white/5">${statusIcon}</span>
                 </div>
             </div>
@@ -256,7 +236,11 @@ export const UIReview = {
     },
 
     _renderError(container, msg) {
-        return; 
+        container.innerHTML = `<div class="p-10 text-center opacity-60 text-sm font-bold">${msg} <br><br> <button onclick="Main.navigate('home')" class="text-white premium-panel px-6 py-3 rounded-xl uppercase tracking-widest text-[10px]">Return Home</button></div>`;
+    },
+    
+    _getFooterTemplate() {
+        return `<div class="h-12"></div>`; // Spacer
     }
 };
 
