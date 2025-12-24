@@ -1,6 +1,6 @@
 /**
  * MAIN.JS (FINAL PRODUCTION ROUTER)
- * Version: 3.5.0 (History Stack & Deep Linking)
+ * Version: 3.7.0 (Mock Exam Protocol Added)
  * Path: assets/js/main.js
  * Responsibilities:
  * 1. Application Entry Point (Boot Sequence).
@@ -12,6 +12,7 @@ import { DB } from './services/db.js';
 import { CONFIG } from './config.js';
 import { MasterAggregator } from './services/master-aggregator.js';
 import { Engine } from './engine/quiz-engine.js';
+import { AcademicEngine } from './engine/academic-engine.js'; 
 import { UI } from './ui/ui-manager.js'; 
 
 // ✅ IMPORT THE HEADER (Critical Component)
@@ -54,20 +55,24 @@ export const Main = {
             // 2. Initialize UI Manager (Loader, Toasts)
             await UI.init();
             
-            // 3. Initialize Oracle (Background Worker)
+            // 3. Initialize Logic Engines
+            // 🛡️ FIX: Ensure Academic logic (Decay/Blindspots) runs on boot
+            await AcademicEngine.init(); 
+
+            // 4. Initialize Oracle (Background Worker)
             if (MasterAggregator) MasterAggregator.init();
 
-            // 4. Initialize Data Seeder (if needed)
+            // 5. Initialize Data Seeder (if needed)
             if (window.DataSeeder) await window.DataSeeder.init();
 
-            // 5. Check for Deep Links (URL Hash)
+            // 6. Check for Deep Links (URL Hash)
             this._handleDeepLink();
 
         } catch (e) {
             console.error("❌ CRITICAL BOOT FAILURE:", e);
             alert("System Error: " + e.message);
         } finally {
-            // 6. Remove Boot Loader
+            // 7. Remove Boot Loader
             UI.toggleLoader(false);
         }
     },
@@ -75,9 +80,13 @@ export const Main = {
     _handleDeepLink() {
         const hash = window.location.hash;
         
-        if (hash.includes('results')) {
-            const id = hash.split('?id=')[1];
-            if (id) {
+        // 🛡️ FIX: Robust URL Parsing using URLSearchParams [Fix #1]
+        if (hash.includes('?')) {
+            const queryString = hash.split('?')[1];
+            const urlParams = new URLSearchParams(queryString);
+            const id = urlParams.get('id');
+
+            if (hash.includes('results') && id) {
                 this.navigate('results', { id });
                 return;
             }
@@ -126,26 +135,28 @@ export const Main = {
         this.state.currentView = viewName;
         this.state.params = params;
 
-        // Visual Transition (Fade Out)
+        // 🛡️ FIX: Optimized Transition Timing [Fix #2]
+        // 1. Visual Exit
         container.classList.add('opacity-0', 'translate-y-4');
         
-        setTimeout(async () => {
-            // Scroll to top
-            window.scrollTo(0, 0);
+        // 2. Wait for animation to finish (Promise wrapper)
+        await new Promise(resolve => setTimeout(resolve, 200));
 
-            // Render Logic
-            await this._renderView(viewName, container, params);
-            
-            // Update Dock
-            if (window.UIHeader) UIHeader.updateActiveTab(viewName);
+        // 3. Render New View
+        window.scrollTo(0, 0);
+        await this._renderView(viewName, container, params);
+        
+        // 4. Update Dock
+        if (window.UIHeader) UIHeader.updateActiveTab(viewName);
 
-            // Visual Transition (Fade In)
+        // 5. Visual Enter (Next Frame to ensure DOM paint)
+        requestAnimationFrame(() => {
             container.classList.remove('opacity-0', 'translate-y-4');
-        }, 200);
+        });
     },
 
     /**
-     * 🛡️ FIX: The "Back" Button Handler
+     * The "Back" Button Handler
      * Restores previous state from history stack.
      */
     goBack() {
@@ -220,10 +231,71 @@ export const Main = {
         await this.startQuizSession(subjectId);
     },
 
-    async startQuizSession(subjectId) {
+    // 🛡️ FIX: Added Mock Selection Modal Logic
+    handleMockSelection(mockId) {
+        // 1. Config
+        const isGS = mockId === 'mock_gs1';
+        const half = isGS ? 50 : 40;
+        const full = isGS ? 100 : 80;
+        const title = isGS ? 'GS PRELIMS MOCK' : 'CSAT MOCK';
+
+        // 2. Create Modal DOM
+        const div = document.createElement('div');
+        div.id = 'mock-modal';
+        div.className = 'fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center animate-fade-in p-4';
+        
+        div.innerHTML = `
+            <div class="premium-card p-6 w-full max-w-sm rounded-[32px] relative overflow-hidden animate-slide-up">
+                <div class="text-center mb-6">
+                    <h3 class="text-lg font-black premium-text-head uppercase">${title}</h3>
+                    <p class="text-[10px] font-bold opacity-50 uppercase tracking-widest">Select Protocol</p>
+                </div>
+                
+                <div class="space-y-3">
+                    <button id="btn-half" class="w-full p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 flex items-center justify-between group active:scale-95 transition-all">
+                        <div class="text-left">
+                            <div class="text-xs font-black text-blue-400 uppercase tracking-wider">Sprint Mode</div>
+                            <div class="text-[10px] font-bold opacity-50 uppercase">${half} Questions</div>
+                        </div>
+                        <i class="fa-solid fa-bolt text-blue-400 opacity-50 group-hover:opacity-100 transition-opacity"></i>
+                    </button>
+                    
+                    <button id="btn-full" class="w-full p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 flex items-center justify-between group active:scale-95 transition-all">
+                        <div class="text-left">
+                            <div class="text-xs font-black text-purple-400 uppercase tracking-wider">Marathon Mode</div>
+                            <div class="text-[10px] font-bold opacity-50 uppercase">${full} Questions</div>
+                        </div>
+                        <i class="fa-solid fa-flag-checkered text-purple-400 opacity-50 group-hover:opacity-100 transition-opacity"></i>
+                    </button>
+                </div>
+                
+                <button id="btn-cancel" class="mt-6 w-full py-3 text-[10px] font-bold uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity">Cancel</button>
+            </div>
+        `;
+
+        document.body.appendChild(div);
+
+        // 3. Bind Events
+        const close = () => div.remove();
+        
+        document.getElementById('btn-half').onclick = () => {
+            close();
+            this.startQuizSession(mockId, { limit: half });
+        };
+
+        document.getElementById('btn-full').onclick = () => {
+            close();
+            this.startQuizSession(mockId, { limit: full });
+        };
+
+        document.getElementById('btn-cancel').onclick = close;
+    },
+
+    // 🛡️ FIX: Updated to accept options (limit)
+    async startQuizSession(subjectId, options = {}) {
         if (window.UI) UI.toggleLoader(true);
         try {
-            await Engine.startSession(subjectId); 
+            await Engine.startSession(subjectId, options); 
             this.state.isQuizActive = true;
             this.navigate('quiz');
         } catch(e) {
@@ -234,12 +306,24 @@ export const Main = {
         }
     },
 
-    handleQuizCompletion(resultData) {
+    async handleQuizCompletion(resultData) {
         this.state.lastResult = resultData;
         this.state.lastResultId = resultData.id;
         this.state.isQuizActive = false;
+        
         // Replace history so "Back" doesn't go to Quiz
         this.state.history = [{ view: 'home', params: {} }]; 
+        
+        // 🛡️ FIX: Handshake with Academic Engine to update stats immediately
+        if (AcademicEngine) {
+            try {
+                // We pass the raw questions so WMI can be calculated
+                await AcademicEngine.processTestResult(resultData, resultData.questions);
+            } catch (e) {
+                console.warn("Main: Stats update failed", e);
+            }
+        }
+
         this.navigate('results', { id: resultData.id });
     },
 
