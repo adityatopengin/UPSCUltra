@@ -1,6 +1,6 @@
 /**
  * CONFIGURATION REGISTRY
- * Version: 2.0.0
+ * Version: 2.1.0 (Patched: Color Mapping for UIHome)
  * Path: assets/js/config.js
  * Responsibilities:
  * 1. Defines the Global App Settings (Name, Version, DB).
@@ -14,7 +14,7 @@ export const CONFIG = {
     // 1. GLOBAL APP SETTINGS
     // ============================================================
     name: "UPSC SuperApp",
-    version: "2.0.0",
+    version: "2.1.0",
     debug: true, // Set to false in production to suppress console logs
     
     // Database Config (Must match what is in db.js)
@@ -109,7 +109,7 @@ export const CONFIG = {
             id: 'csat_logic',
             name: 'Logical Reasoning',
             icon: 'puzzle-piece',
-            color: 'fuchsia',
+            color: 'purple', // 🛡️ FIX: Changed from 'fuchsia' to 'purple' to match UIHome flavor map
             weight: 0.30,
             description: 'Analytical Ability and Problem Solving'
         },
@@ -170,5 +170,4 @@ export const CONFIG = {
 
 // Global Exposure (Optional, for console debugging)
 window.CONFIG = CONFIG;
-
 
