@@ -1,6 +1,6 @@
 /**
  * DATA SEEDER (THE GENESIS)
- * Version: 2.5.0 (Field Name Fix)
+ * Version: 2.1.1 (Fixed Field Naming)
  * Path: assets/js/services/data-seeder.js
  */
 
@@ -8,14 +8,21 @@ import { DB } from './db.js';
 import { CONFIG } from '../config.js';
 
 export const DataSeeder = {
+    // ============================================================
+    // 1. CONTROL FLOW
+    // ============================================================
+
     async init() {
         console.log("🌱 DataSeeder: Checking database status...");
+
         try {
             const isEmpty = await this._checkIfEmpty();
+            
             if (isEmpty) {
                 console.log("🌱 DataSeeder: Database is empty. Initiating Genesis...");
                 const loaderText = document.querySelector('#boot-loader div:last-child');
                 if (loaderText) loaderText.textContent = "Generating Question Bank...";
+                
                 await this.seed();
                 console.log("🌱 DataSeeder: Genesis Complete.");
             } else {
@@ -45,14 +52,20 @@ export const DataSeeder = {
         console.log(`🌱 DataSeeder: Planted ${allQuestions.length} questions in ${duration}ms.`);
     },
 
+    // ============================================================
+    // 2. DATA GATHERING
+    // ============================================================
+
     async _gatherAllData() {
         let masterDataset = [];
         const allSubjects = [...CONFIG.subjectsGS1, ...CONFIG.subjectsCSAT];
 
         for (const sub of allSubjects) {
             let subjectQs = [];
+
             try {
                 const response = await fetch(`assets/data/${sub.id}.json`);
+                
                 if (response.ok) {
                     const jsonData = await response.json();
                     if (Array.isArray(jsonData) && jsonData.length > 0) {
@@ -61,7 +74,7 @@ export const DataSeeder = {
                             ...q,
                             id: q.id || `json_${sub.id}_${idx}`,
                             subject: sub.id, 
-                            random: Math.random()
+                            random: Math.random() 
                         }));
                     } else {
                         throw new Error("Empty or invalid JSON");
@@ -69,13 +82,20 @@ export const DataSeeder = {
                 } else {
                     throw new Error(`File not found (Status: ${response.status})`);
                 }
+
             } catch (e) {
                 subjectQs = this._generateMockQuestionsForSubject(sub.id, sub.name);
             }
+
             masterDataset = masterDataset.concat(subjectQs);
         }
+
         return masterDataset;
     },
+
+    // ============================================================
+    // 3. MOCK GENERATOR
+    // ============================================================
 
     _generateMockQuestionsForSubject(subjectId, subjectName) {
         return Array.from({ length: 50 }, (_, i) => 
@@ -95,10 +115,10 @@ export const DataSeeder = {
             id: `seed_${subjectId}_${index}`,
             subject: subjectId,
             topic: topic,
-            level: level,
+            level: level, 
             text: qText.question,
             options: qText.options,
-            // ✅ CORRECTED FIELD NAME
+            // 🛡️ FIX: Renamed from correctOption to correctAnswer to match Engine expectation
             correctAnswer: Math.floor(Math.random() * 4), 
             explanation: qText.explanation,
             random: Math.random(), 
@@ -118,6 +138,7 @@ export const DataSeeder = {
             csat_logic: ['Syllogism', 'Blood Relations', 'Direction Sense', 'Coding-Decoding', 'Seating'],
             csat_rc: ['Inference', 'Assumption', 'Main Idea', 'Tone', 'Conclusion']
         };
+
         const list = topics[subId] || ['General'];
         return list[index % list.length];
     },
@@ -125,7 +146,12 @@ export const DataSeeder = {
     _generateQuestionText(subId, topic, level, index) {
         const base = {
             question: `Which of the following statements regarding <b>${topic}</b> is/are correct in the context of ${subId}?`,
-            options: ["1 only", "2 only", "Both 1 and 2", "Neither 1 nor 2"],
+            options: [
+                "1 only",
+                "2 only",
+                "Both 1 and 2",
+                "Neither 1 nor 2"
+            ],
             explanation: `Statement 1 is correct because [AI Generated Reason]. Statement 2 is incorrect due to factual error regarding ${topic}. Refer to Standard Text Ch. ${index + 1}.`
         };
 
@@ -141,7 +167,12 @@ export const DataSeeder = {
         } 
         else if (level === 'L3') {
             base.question = `Consider the following assertions about <b>${topic}</b>:\n1. It was first introduced in ${1900 + index}.\n2. It violates Article ${10 + index}.\n3. It has been amended ${index} times.\n\nWhich of the above are correct?`;
-            base.options = ["1 and 2 only", "2 and 3 only", "1 and 3 only", "1, 2 and 3"];
+            base.options = [
+                "1 and 2 only",
+                "2 and 3 only",
+                "1 and 3 only",
+                "1, 2 and 3"
+            ];
         }
 
         return base;
@@ -149,5 +180,4 @@ export const DataSeeder = {
 };
 
 window.DataSeeder = DataSeeder;
-
 
