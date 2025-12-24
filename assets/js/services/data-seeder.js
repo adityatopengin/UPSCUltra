@@ -1,6 +1,6 @@
 /**
  * DATA SEEDER (THE GENESIS)
- * Version: 2.1.1 (Fixed Field Naming)
+ * Version: 2.2.0 (Patched: JSON Normalization)
  * Path: assets/js/services/data-seeder.js
  */
 
@@ -70,10 +70,17 @@ export const DataSeeder = {
                     const jsonData = await response.json();
                     if (Array.isArray(jsonData) && jsonData.length > 0) {
                         console.log(`🌱 DataSeeder: Loaded ${jsonData.length} Qs from ${sub.id}.json`);
+                        
+                        // 🛡️ FIX: Normalize Data Structure
+                        // Ensures incoming JSONs align with the new Engine schema (correctAnswer)
                         subjectQs = jsonData.map((q, idx) => ({
                             ...q,
                             id: q.id || `json_${sub.id}_${idx}`,
-                            subject: sub.id, 
+                            subject: sub.id,
+                            // Map correctOption -> correctAnswer if needed
+                            correctAnswer: (q.correctAnswer !== undefined) ? q.correctAnswer : q.correctOption,
+                            // Remove legacy field to keep DB clean
+                            correctOption: undefined,
                             random: Math.random() 
                         }));
                     } else {
@@ -84,6 +91,7 @@ export const DataSeeder = {
                 }
 
             } catch (e) {
+                // If file missing, fall back to procedural generation
                 subjectQs = this._generateMockQuestionsForSubject(sub.id, sub.name);
             }
 
@@ -180,4 +188,3 @@ export const DataSeeder = {
 };
 
 window.DataSeeder = DataSeeder;
-
