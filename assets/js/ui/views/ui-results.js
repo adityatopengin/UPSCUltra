@@ -1,6 +1,6 @@
 /**
  * UI-RESULTS (THE REPORT CARD)
- * Version: 3.2.0 (Lazy Load Fix)
+ * Version: 3.3.0 (Duplicate Navigation Prevention)
  * Path: assets/js/ui/views/ui-results.js
  */
 
@@ -12,11 +12,16 @@ let BehavioralEngine = null;
 
 export const UIResults = {
     // ============================================================
-    // 1. VIEW INITIALIZATION
+    // 1. STATE & INITIALIZATION
     // ============================================================
+    
+    state: {
+        isNavigating: false // 🛡️ FIX: Debounce flag for buttons
+    },
 
     async render(container) {
         console.log("📊 UIResults: Generating Report...");
+        this.state.isNavigating = false; // Reset flag on mount
         
         // 1. Lazy Load Dependencies (Safe Mode)
         if (!BehavioralEngine) {
@@ -29,7 +34,6 @@ export const UIResults = {
         }
 
         container.innerHTML = '';
-        // REFACTOR: Removed bg-slate-900. Increased padding to pb-40.
         container.className = 'view-container pb-40 min-h-screen';
 
         // 2. Try Memory First (Fastest)
@@ -45,7 +49,7 @@ export const UIResults = {
                 result = await DB.get('history', resultId);
             }
 
-            if (!result) throw new Error("Result data missing.");
+            if (!result) throw new Error("Result data missing or not found.");
 
             // 4. Render Content
             this._renderContent(container, result);
@@ -59,6 +63,22 @@ export const UIResults = {
         } catch (e) {
             console.error("UIResults Error:", e);
             this._renderError(container, "Could not load results. " + e.message);
+        }
+    },
+
+    // 🛡️ FIX: Centralized Navigation Handler (Debounce)
+    handleNavigation(target, params = null) {
+        if (this.state.isNavigating) return;
+        this.state.isNavigating = true;
+
+        // Visual feedback
+        const btns = document.querySelectorAll('button');
+        btns.forEach(b => b.classList.add('opacity-50', 'pointer-events-none'));
+
+        if (window.Main) {
+            window.Main.navigate(target, params);
+        } else {
+            window.location.reload();
         }
     },
 
@@ -97,11 +117,9 @@ export const UIResults = {
 
         const mins = Math.floor((result.totalDuration || 0) / 60);
 
-        // REFACTOR: Replaced bg-slate-900/backdrop with premium header logic.
-        // Replaced card styling with premium-card.
         return `
         <div class="sticky top-0 z-30 px-4 py-3 flex items-center justify-between border-b border-white/5 bg-inherit backdrop-blur-md">
-            <button onclick="Main.navigate('home')" class="w-8 h-8 rounded-full premium-panel flex items-center justify-center active:scale-95 opacity-60 hover:opacity-100">
+            <button onclick="UIResults.handleNavigation('home')" class="w-8 h-8 rounded-full premium-panel flex items-center justify-center active:scale-95 opacity-60 hover:opacity-100">
                 <i class="fa-solid fa-arrow-left"></i>
             </button>
             <h2 class="premium-text-head text-xs font-black uppercase tracking-widest">Performance Report</h2>
@@ -150,13 +168,12 @@ export const UIResults = {
     },
 
     _getFooterTemplate(resultId) {
-        // REFACTOR: Replaced bg-slate-900 with premium styling
         return `
         <div class="fixed bottom-0 left-0 w-full border-t border-white/5 p-4 z-30 flex gap-3 safe-area-pb bg-inherit backdrop-blur-md">
-            <button onclick="Main.navigate('home')" class="flex-1 py-4 rounded-xl premium-panel font-bold uppercase tracking-widest text-xs active:scale-95 transition-transform opacity-80 hover:opacity-100">
+            <button onclick="UIResults.handleNavigation('home')" class="flex-1 py-4 rounded-xl premium-panel font-bold uppercase tracking-widest text-xs active:scale-95 transition-transform opacity-80 hover:opacity-100">
                 Finish
             </button>
-            <button onclick="Main.navigate('review', { id: '${resultId}' })" class="flex-1 py-4 rounded-xl bg-white text-slate-900 font-bold uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-transform hover:bg-gray-100">
+            <button onclick="UIResults.handleNavigation('review', { id: '${resultId}' })" class="flex-1 py-4 rounded-xl bg-white text-slate-900 font-bold uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-transform hover:bg-gray-100">
                 Review Mistakes
             </button>
         </div>
@@ -185,9 +202,8 @@ export const UIResults = {
 
         // 4. Mistakes Link
         if (result.wrong > 0) {
-            // REFACTOR: Replaced bg-slate-800 with premium-card
             grid.innerHTML += `
-            <div onclick="Main.navigate('review', { id: '${result.id}' })" class="p-5 rounded-[24px] premium-card border border-white/5 flex items-center justify-between cursor-pointer active:scale-95 transition-transform group">
+            <div onclick="UIResults.handleNavigation('review', { id: '${result.id}' })" class="p-5 rounded-[24px] premium-card border border-white/5 flex items-center justify-between cursor-pointer active:scale-95 transition-transform group">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center text-xl"><i class="fa-solid fa-file-circle-xmark"></i></div>
                     <div>
@@ -201,7 +217,6 @@ export const UIResults = {
     },
 
     _renderPsychCard(title, value, icon, color) {
-        // REFACTOR: Replaced bg-slate-800 with premium-card
         return `
         <div class="p-5 rounded-[24px] premium-card border border-white/5 flex items-center gap-4">
             <div class="w-12 h-12 rounded-2xl bg-${color}-500/10 text-${color}-400 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-${icon}"></i></div>
@@ -223,11 +238,9 @@ export const UIResults = {
     },
 
     _renderError(container, msg) {
-        // REFACTOR: Removed bg-slate-700
-        container.innerHTML = `<div class="p-10 text-center opacity-60">${msg} <br><br> <button onclick="Main.navigate('home')" class="text-white premium-panel px-4 py-2 rounded">Home</button></div>`;
+        container.innerHTML = `<div class="p-10 text-center opacity-60">${msg} <br><br> <button onclick="UIResults.handleNavigation('home')" class="text-white premium-panel px-4 py-2 rounded">Home</button></div>`;
     }
 };
 
 window.UIResults = UIResults;
-
 
