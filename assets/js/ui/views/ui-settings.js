@@ -1,6 +1,6 @@
 /**
  * UI-SETTINGS (CONTROL CENTER)
- * Version: 2.6.0 (Fixed Import & Handlers)
+ * Version: 2.7.0 (Fixed Import, Handlers & Zombie Audio)
  * Path: assets/js/ui/views/ui-settings.js
  * Responsibilities
  * 1. System Preferences (Theme, Haptics, Data).
@@ -46,6 +46,17 @@ export const UISettings = {
             </div>
             <div id="settings-modal-overlay" class="fixed inset-0 z-[60] hidden flex items-center justify-center transition-all duration-300"></div>
         `;
+    },
+
+    // 🛡️ FIX: Added Cleanup Hook to prevent "Zombie Audio"
+    onUnmount() {
+        console.log("⚙️ UISettings: Cleaning up resources...");
+        if (this.state.audioInstance) {
+            this.state.audioInstance.pause();
+            this.state.audioInstance.currentTime = 0; // Reset track
+            this.state.audioInstance = null;
+        }
+        this.state.audioPlaying = false;
     },
 
     // ============================================================
@@ -120,7 +131,8 @@ export const UISettings = {
             if(btn) btn.innerText = "Failed";
         }
     },
-        // ============================================================
+
+    // ============================================================
     // LOGIC: SARKARI STORAGE AUDIT
     // ============================================================
 
@@ -230,8 +242,6 @@ export const UISettings = {
         `;
     },
 
-
-
     async handleReset() {
         if(confirm("⚠️ FACTORY RESET WARNING ⚠️\n\nThis will permanently delete ALL your progress, history, and stats.\n\nAre you sure?")) {
             await DB.clearStore('history');
@@ -307,8 +317,6 @@ export const UISettings = {
             </button>
         </section>`;
     },
-
-     
 
     _getDataControlTemplate() {
         // REFACTOR: Replaced glass-card with premium-card, removed hardcoded text colors
@@ -910,5 +918,3 @@ Details: [Insert your bekaar job offer here]`
 };
 
 window.UISettings = UISettings;
-
-
