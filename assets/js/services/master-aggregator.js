@@ -45,22 +45,22 @@ export const MasterAggregator = {
         if (this.worker || this._useFallbackMode) return; 
 
         if (window.Worker) {
-            try {
-                // 🛡️ FIX: Use absolute path for PWA/SPA stability
-                const workerPath = '/assets/js/workers/oracle.worker.js'; 
+                         try {
+                // 🛡️ FIX: Relative Path is required for GitHub Pages & Sub-folders
+                const workerPath = './assets/js/workers/oracle.worker.js'; 
 
                 this.worker = new Worker(workerPath);
                 
                 this.worker.onmessage = (e) => this._handleWorkerResponse(e);
                 
                 this.worker.onerror = (err) => {
-                    console.error("🔮 OracleWorker Critical Error:", {
-                        message: err.message,
-                        filename: err.filename,
-                        lineno: err.lineno
-                    });
+                    // Log the full error object to see the real cause
+                    console.error("🔮 OracleWorker Critical Error (Main Thread):", err);
                     this.isCalculating = false;
-                    this._useFallbackMode = true; // Switch to main thread fallback
+                    // Only fallback if it's a genuine script load error
+                    if (err.message && (err.message.includes('404') || err.message.includes('Script error'))) {
+                        this._useFallbackMode = true; 
+                    }
                 };
 
                 this.worker.postMessage({ command: 'PING' });
