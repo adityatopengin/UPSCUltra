@@ -1,6 +1,6 @@
 /**
  * UI-QUIZ (THE EXAM HALL)
- * Version: 2.9.0 (Patched: Source Badge + PYQ Identification)
+ * Version: 2.9.1 (Patched: Input Logic Fixed - Index based)
  * Path: assets/js/ui/views/ui-quiz.js
  */
 
@@ -154,7 +154,8 @@ export const UIQuiz = {
             if (['1', '2', '3', '4'].includes(e.key)) {
                 const idx = parseInt(e.key) - 1;
                 const currentQ = Engine.state.questions[Engine.state.currentIndex];
-                if (currentQ) Engine.submitAnswer(currentQ.id, idx);
+                // 🛡️ FIX: Use Index (Engine.state.currentIndex) instead of ID
+                if (currentQ) Engine.submitAnswer(Engine.state.currentIndex, idx);
             }
         };
         window.addEventListener('keydown', this._keyHandler);
@@ -260,7 +261,9 @@ export const UIQuiz = {
                     <div class="text-sm font-medium leading-snug">${optText}</div>
                 </div>
             `;
-            btn.onclick = () => Engine.submitAnswer(q.id, i);
+            // 🛡️ CRITICAL FIX: Pass 'index' (0,1,2...) not 'q.id' (POLY_001)
+            // This ensures the Engine saves it in the correct slot for the current session.
+            btn.onclick = () => Engine.submitAnswer(index, i);
             this.dom.optionsContainer.appendChild(btn);
         });
     },
