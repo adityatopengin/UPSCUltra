@@ -1,6 +1,6 @@
 /**
  * MAIN.JS (FINAL PRODUCTION ROUTER)
- * Version: 3.7.1 (Patched: Data Seeder Explicit Init)
+ * Version: 3.8.0 (Patched: History API for Hardware Back Button)
  * Path: assets/js/main.js
  * Responsibilities:
  * 1. Application Entry Point (Boot Sequence).
@@ -71,13 +71,34 @@ export const Main = {
             // 6. Check for Deep Links (URL Hash)
             this._handleDeepLink();
 
+            // 7. Initialize Hardware Back Button Support
+            this._initHistoryListener();
+
         } catch (e) {
             console.error("❌ CRITICAL BOOT FAILURE:", e);
             alert("System Error: " + e.message);
         } finally {
-            // 7. Remove Boot Loader
+            // 8. Remove Boot Loader
             UI.toggleLoader(false);
         }
+    },
+
+    // 🛡️ FIX: Hardware Back Button Logic
+    _initHistoryListener() {
+        // Set initial state
+        window.history.replaceState({ view: 'home' }, '', '#home');
+
+        // Listen for the physical back button
+        window.addEventListener('popstate', (event) => {
+            if (event.state && event.state.view) {
+                // Determine if we should allow going back (Anti-Cheat check happens in navigate)
+                // We pass 'true' to skip pushing a new history entry (since we are already moving in history)
+                this.navigate(event.state.view, event.state.params || {}, true);
+            } else {
+                // Fallback to home if history is lost
+                this.navigate('home', {}, true);
+            }
+        });
     },
 
     _handleDeepLink() {
@@ -107,8 +128,9 @@ export const Main = {
      * Primary method to switch screens.
      * @param {string} viewName - 'home', 'quiz', 'results', etc.
      * @param {object} params - Data to pass to the view (e.g. subjectId)
+     * @param {boolean} isFromHistory - If true, prevents pushing duplicate history states
      */
-    async navigate(viewName, params = {}) {
+    async navigate(viewName, params = {}, isFromHistory = false) {
         console.log(`🧭 Router: Navigating to [${viewName}]`, params);
 
         const container = document.getElementById('app-container');
@@ -117,6 +139,10 @@ export const Main = {
         // 🛡️ FIX: Prevent navigation if Quiz is locked (Anti-Cheat)
         if (this.state.isQuizActive && viewName !== 'quiz' && viewName !== 'results') {
             if (!confirm("⚠️ Quit Exam?\n\nYour progress will be lost.")) {
+                // If user cancels leaving, we must fix the URL if they used Back Button
+                if (isFromHistory) {
+                    window.history.pushState({ view: 'quiz' }, '', '#quiz');
+                }
                 // Restore active tab to quiz
                 if (window.UIHeader) UIHeader.updateActiveTab('quiz');
                 return;
@@ -124,7 +150,12 @@ export const Main = {
             this.endQuizSession();
         }
 
-        // 🛡️ FIX: Push to History Stack (unless going Home which clears stack)
+        // 🛡️ FIX: Sync Browser History (Prevents App Exit on Back Button)
+        if (!isFromHistory) {
+            window.history.pushState({ view: viewName, params }, '', `#${viewName}`);
+        }
+
+        // 🛡️ FIX: Push to Internal History Stack (unless going Home which clears stack)
         if (viewName === 'home') {
             this.state.history = []; // Root reset
         } else if (this.state.currentView !== viewName) {
@@ -163,22 +194,14 @@ export const Main = {
      * Restores previous state from history stack.
      */
     goBack() {
-        if (this.state.history.length === 0) {
+        // If we have history, pop it. 
+        // Note: We use history.back() to trigger the popstate listener we defined above.
+        // This ensures the Hardware button and UI button behave identically.
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
             this.navigate('home');
-            return;
         }
-
-        const prevState = this.state.history.pop();
-        
-        // Direct navigation skipping the history push
-        this.state.currentView = prevState.view;
-        this.state.params = prevState.params;
-
-        const container = document.getElementById('app-container');
-        
-        // Fast Render (No animation lag for back)
-        this._renderView(prevState.view, container, prevState.params);
-        if (window.UIHeader) UIHeader.updateActiveTab(prevState.view);
     },
 
     // ============================================================
