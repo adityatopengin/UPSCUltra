@@ -14,7 +14,7 @@ export const CONFIG = {
     // 1. GLOBAL APP SETTINGS
     // ============================================================
     name: "UPSC SuperApp",
-    version: "2.1.0",
+    version: "3.1.0",
     debug: true, // Set to false in production to suppress console logs
     
     // Database Config (Must match what is in db.js)
@@ -157,7 +157,7 @@ export const CONFIG = {
     // ============================================================
     
     settings: {
-        examDate: '2025-05-25', // Target Date for countdowns
+        examDate: '2026-05-25', // Target Date for countdowns
         passingMarks: 66.6,     // CSAT Passing threshold
         totalMarksGS: 200,      // GS Paper 1 Total
         negativeMarking: 0.33,  // 1/3rd penalty
