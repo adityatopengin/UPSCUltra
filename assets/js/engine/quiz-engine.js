@@ -1,6 +1,6 @@
 /**
  * QUIZ ENGINE (THE BRAIN)
- * Version: 2.8.0 (Patched: Mock Protocol + Smart Filtering)
+ * Version: 2.9.1 (Patched: Toggle Logic + Review Data Fix)
  * Path: assets/js/engine/quiz-engine.js
  */
 
@@ -160,8 +160,14 @@ export const Engine = {
         // Telemetry: Record time spent so far
         this._recordTime(currentIndex);
 
-        // Save Answer
-        this.state.answers[currentIndex] = optionIndex;
+        // 🛡️ FIX: TOGGLE LOGIC (Select / Unselect)
+        // If clicking the same option again, deselect it (delete from answers)
+        if (this.state.answers[currentIndex] === optionIndex) {
+            delete this.state.answers[currentIndex];
+            optionIndex = null; // Signal UI to remove highlight
+        } else {
+            this.state.answers[currentIndex] = optionIndex;
+        }
         
         this._saveState();
         this._emit('ANSWER_SAVED', { questionId: currentIndex, optionIndex });
@@ -271,22 +277,29 @@ export const Engine = {
         let score = 0;
         const total = this.state.questions.length;
 
-        this.state.questions.forEach((q, idx) => {
-            const userAnswer = this.state.answers[idx]; 
-            
-            if (userAnswer !== undefined) {
+        // 🛡️ FIX: Map User Answers into the Result Object
+        // This is critical for the Review Screen to show what you clicked
+        const processedQuestions = this.state.questions.map((q, idx) => {
+            const userAnswer = this.state.answers[idx];
+            let isCorrect = false;
+
+            if (userAnswer !== undefined && userAnswer !== null) {
                 if (userAnswer === q.correctAnswer) {
                     correct++;
                     score += 2;
-                    q.isCorrect = true; 
+                    isCorrect = true;
                 } else {
                     wrong++;
                     score -= 0.66;
-                    q.isCorrect = false; 
+                    isCorrect = false;
                 }
-            } else {
-                q.isCorrect = false;
             }
+            
+            return {
+                ...q,
+                userAnswer: userAnswer, // The missing link for Review UI
+                isCorrect: isCorrect
+            };
         });
 
         const id = (window.crypto && window.crypto.randomUUID) 
@@ -304,7 +317,7 @@ export const Engine = {
             skipped: total - (correct + wrong),
             accuracy: correct > 0 ? Math.round((correct / (correct + wrong)) * 100) : 0,
             totalDuration: this.state.totalDuration - this.state.timeLeft,
-            questions: this.state.questions, 
+            questions: processedQuestions, // Send the processed list
             telemetry: {
                 impulseClicks: this.state.telemetry.impulseClicks,
                 switches: this.state.telemetry.switches,
