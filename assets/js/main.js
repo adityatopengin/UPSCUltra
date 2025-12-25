@@ -1,6 +1,6 @@
 /**
  * MAIN.JS (FINAL PRODUCTION ROUTER)
- * Version: 3.7.0 (Mock Exam Protocol Added)
+ * Version: 3.7.1 (Patched: Data Seeder Explicit Init)
  * Path: assets/js/main.js
  * Responsibilities:
  * 1. Application Entry Point (Boot Sequence).
@@ -14,6 +14,8 @@ import { MasterAggregator } from './services/master-aggregator.js';
 import { Engine } from './engine/quiz-engine.js';
 import { AcademicEngine } from './engine/academic-engine.js'; 
 import { UI } from './ui/ui-manager.js'; 
+// 🛡️ FIX: Explicit Import to guarantee Seeder availability
+import { DataSeeder } from './services/data-seeder.js';
 
 // ✅ IMPORT THE HEADER (Critical Component)
 import { UIHeader } from './ui/components/ui-header.js';
@@ -62,8 +64,9 @@ export const Main = {
             // 4. Initialize Oracle (Background Worker)
             if (MasterAggregator) MasterAggregator.init();
 
-            // 5. Initialize Data Seeder (if needed)
-            if (window.DataSeeder) await window.DataSeeder.init();
+            // 5. Initialize Data Seeder
+            // 🛡️ FIX: Explicit call to ensure questions are loaded before UI starts
+            await DataSeeder.init();
 
             // 6. Check for Deep Links (URL Hash)
             this._handleDeepLink();
