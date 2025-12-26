@@ -1,6 +1,6 @@
 /**
  * UI MANAGER (CRASH PROOF)
- * Version: 2.2.0 (Patched: Toast Stacking)
+ * Version: 2.3.0 (Patched: Dual Theme Support)
  * Path: assets/js/ui/ui-manager.js
  */
 
@@ -64,8 +64,8 @@ export const UI = {
     _createRuntimeLoader() {
         const div = document.createElement('div');
         div.id = 'global-loader';
-        // REFACTOR: Replaced bg-slate-900/80 with neutral bg-black/80
-        div.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex flex-col items-center justify-center animate-fade-in';
+        // Adaptive Backdrop: Light = White/80, Dark = Black/80
+        div.className = 'fixed inset-0 bg-white/80 dark:bg-black/80 backdrop-blur-sm z-[60] flex flex-col items-center justify-center animate-fade-in transition-colors duration-300';
         div.innerHTML = `<div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>`;
         document.body.appendChild(div);
     },
@@ -83,15 +83,18 @@ export const UI = {
 
         // 2. Create Toast Element
         const div = document.createElement('div');
+        
+        // Adaptive Toast Colors
         const colors = { 
-            success: 'bg-emerald-600', 
-            error: 'bg-rose-600', 
-            info: 'premium-card border border-white/10' 
+            success: 'bg-emerald-500 text-white shadow-emerald-500/20', 
+            error: 'bg-rose-500 text-white shadow-rose-500/20', 
+            // Info: White Pill (Light) vs Glass Pill (Dark)
+            info: 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10' 
         };
         
         // 🛡️ FIX: Removed 'fixed' positioning from individual toasts.
         // Added 'pointer-events-auto' so users can dismiss or copy text if needed.
-        div.className = `px-6 py-3 rounded-full shadow-2xl text-white text-xs font-bold uppercase tracking-wide animate-slide-down pointer-events-auto ${colors[type] || colors.info}`;
+        div.className = `px-6 py-3 rounded-full shadow-2xl text-xs font-bold uppercase tracking-wide animate-slide-down pointer-events-auto transition-all ${colors[type] || colors.info}`;
         div.innerText = message;
         
         // 3. Append to Stack
