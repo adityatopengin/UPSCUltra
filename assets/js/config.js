@@ -1,6 +1,6 @@
 /**
  * CONFIGURATION REGISTRY
- * Version: 2.1.0 (Patched: Color Mapping for UIHome)
+ * Version: 2.2.0 (Patched: Added Missing Arcade Mode)
  * Path: assets/js/config.js
  * Responsibilities:
  * 1. Defines the Global App Settings (Name, Version, DB).
@@ -149,6 +149,14 @@ export const CONFIG = {
             icon: 'layer-group',
             color: 'yellow',
             description: 'Enhance fluid intelligence and logic.'
+        },
+        // ✅ FIX: Added missing game required by Behavioral Engine
+        {
+            id: 'balloon_pop',
+            name: 'Risk Balloon',
+            icon: 'wind', 
+            color: 'rose',
+            description: 'Test your risk appetite. Pump it up without popping!'
         }
     ],
 
