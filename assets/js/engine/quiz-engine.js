@@ -1,6 +1,6 @@
 /**
  * QUIZ ENGINE (THE BRAIN)
- * Version: 2.9.1 (Patched: Toggle Logic + Review Data Fix)
+ * Version: 2.9.2 (Patched: Enhanced Mock Logic & Timer Stability)
  * Path: assets/js/engine/quiz-engine.js
  */
 
@@ -45,6 +45,7 @@ export const Engine = {
         if (savedState) {
             try {
                 const parsed = JSON.parse(savedState);
+                // Only restore if it matches the requested subject and is active
                 if (parsed.active && parsed.subjectId === subjectId) {
                     console.log("🧠 Engine: Restoring Orphan Session...");
                     this.state = {
@@ -56,7 +57,10 @@ export const Engine = {
                     this._emit('SESSION_START');
                     return;
                 }
-            } catch(e) { localStorage.removeItem('quiz_state'); }
+            } catch(e) { 
+                console.warn("Engine: Failed to restore session, clearing storage.", e);
+                localStorage.removeItem('quiz_state'); 
+            }
         }
 
         // 2. Clean Slate
@@ -72,10 +76,16 @@ export const Engine = {
         this.state.telemetry = { impulseClicks: 0, switches: {}, timePerQuestion: {}, questionStartTimes: {} };
 
         // 4. Load Questions (Standard vs Mock)
-        if (subjectId.startsWith('mock_')) {
-            this.state.questions = await this._generateMockPaper(subjectId, options.limit || 50);
-        } else {
-            this.state.questions = await this._fetchQuestions(subjectId);
+        try {
+            if (subjectId.startsWith('mock_')) {
+                this.state.questions = await this._generateMockPaper(subjectId, options.limit || 50);
+            } else {
+                this.state.questions = await this._fetchQuestions(subjectId);
+            }
+        } catch (error) {
+            console.error("Engine: Failed to load questions.", error);
+             this.state.active = false;
+             throw error; // Re-throw to be handled by UI
         }
         
         if (!this.state.questions || this.state.questions.length === 0) {
@@ -126,6 +136,7 @@ export const Engine = {
 
         } catch (e) {
             console.error("Engine: Save Failed", e);
+            // Even if save fails, try to show results via Main handler
             if (window.Main && window.Main.handleQuizCompletion) {
                 window.Main.handleQuizCompletion(result);
             }
@@ -252,6 +263,7 @@ export const Engine = {
         this._stopTimer(); 
         this.timerInterval = setInterval(() => {
             this.state.timeLeft--;
+            // Save state periodically to prevent data loss
             if (this.state.timeLeft % 10 === 0) this._saveState();
 
             window.dispatchEvent(new CustomEvent('quiz-tick', { 
