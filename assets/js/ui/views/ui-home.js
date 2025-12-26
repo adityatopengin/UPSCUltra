@@ -1,6 +1,6 @@
 /**
  * UI-HOME (THE DASHBOARD)
- * Version: 3.3.0 (Patched: Grand Mock Integration)
+ * Version: 3.4.0 (Patched: Dual Theme Support)
  * Path: assets/js/ui/views/ui-home.js
  * Responsibilities:
  * 1. Renders the Oracle HUD (AI Prediction).
@@ -21,7 +21,7 @@ export const UIHome = {
     async render(container) {
         // A. Clear Container & Set Layout
         container.innerHTML = '';
-        container.className = 'view-container pb-40 px-4'; 
+        container.className = 'view-container pb-40 px-4 bg-slate-50 dark:bg-slate-900 transition-colors duration-300'; 
 
         // B. Update Header State (Safety Check)
         if (window.UI && window.UIHeader) {
@@ -53,7 +53,7 @@ export const UIHome = {
     // ============================================================
 
     _renderOracleSection(slot) {
-        // Create a wrapper for margins/layout, but let UIOracle handle the inner card
+        // Create a wrapper for margins/layout
         const wrapper = document.createElement('div');
         wrapper.className = 'mb-6 animate-fade-in min-h-[220px]';
         slot.appendChild(wrapper);
@@ -108,12 +108,11 @@ export const UIHome = {
                 subjectConfig = { name: subjectId.toUpperCase(), color: 'slate', icon: 'book' };
             }
 
-            // Get Flavor
-            const flavorClass = this._getFlavor(subjectConfig.color);
+            const color = subjectConfig.color || 'blue';
 
             const card = document.createElement('div');
-            // Premium Card Style with Flavor
-            card.className = `premium-card ${flavorClass} p-5 rounded-[28px] mb-8 flex items-center justify-between cursor-pointer active:scale-95 transition-transform animate-slide-up select-none`;
+            // Dual Theme Style: White Card (Light) vs Glass (Dark)
+            card.className = `premium-card p-5 rounded-[28px] mb-8 flex items-center justify-between cursor-pointer active:scale-95 transition-all animate-slide-up select-none bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 shadow-xl shadow-slate-200/50 dark:shadow-none`;
             
             card.onclick = () => {
                 if(window.Main) Main.showResult(lastResult.id);
@@ -121,19 +120,19 @@ export const UIHome = {
 
             card.innerHTML = `
                 <div class="flex items-center gap-4">
-                    <div class="icon-pillow w-12 h-12 text-xl rounded-2xl">
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl bg-${color}-100 dark:bg-${color}-500/20 text-${color}-600 dark:text-${color}-400">
                         <i class="fa-solid fa-${subjectConfig.icon}"></i>
                     </div>
                     
                     <div>
-                        <h3 class="text-xs font-black premium-text-head">RESUME LEARNING</h3>
-                        <p class="text-[10px] font-bold opacity-60 uppercase tracking-wide mt-0.5">
+                        <h3 class="text-xs font-black premium-text-head text-slate-800 dark:text-white uppercase tracking-wider">RESUME LEARNING</h3>
+                        <p class="text-[10px] font-bold opacity-60 uppercase tracking-wide mt-0.5 text-slate-500 dark:text-slate-400">
                             ${subjectConfig.name} &bull; ${lastResult.score.toFixed(0)} Marks
                         </p>
                     </div>
                 </div>
 
-                <div class="w-8 h-8 rounded-full premium-panel flex items-center justify-center opacity-50">
+                <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-white/50">
                     <i class="fa-solid fa-chevron-right text-xs"></i>
                 </div>
             `;
@@ -142,27 +141,27 @@ export const UIHome = {
 
         } catch (e) {
             console.warn("UIHome: Failed to render resume card", e);
-            // No user facing error needed, just don't show the card
         }
     }, 
 
     // ============================================================
-    // 4. TOGGLE SWITCH & GRIDS (UPDATED FOR GRAND MOCKS)
+    // 4. TOGGLE SWITCH & GRIDS
     // ============================================================
 
     _renderToggleSwitch(slot) {
         const wrapper = document.createElement('div');
         wrapper.className = "flex justify-center mb-6";
         
+        // Adaptive Backgrounds for the Switch
         wrapper.innerHTML = `
-            <div class="premium-panel p-1 rounded-full flex relative w-64 h-12">
-                <div id="toggle-pill" class="absolute top-1 left-1 bottom-1 w-[calc(50%-4px)] bg-white dark:bg-slate-700 shadow-sm rounded-full transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"></div>
+            <div class="p-1 rounded-full flex relative w-64 h-12 bg-slate-200 dark:bg-slate-800/50 shadow-inner">
+                <div id="toggle-pill" class="absolute top-1 left-1 bottom-1 w-[calc(50%-4px)] bg-white dark:bg-slate-600 shadow-md rounded-full transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"></div>
                 
                 <button id="btn-gs1" class="flex-1 relative z-10 text-[10px] font-black uppercase tracking-widest text-center transition-colors duration-300 text-blue-600 dark:text-white">
                     GS Paper I
                 </button>
                 
-                <button id="btn-csat" class="flex-1 relative z-10 text-[10px] font-black uppercase tracking-widest text-center transition-colors duration-300 opacity-50 hover:opacity-100">
+                <button id="btn-csat" class="flex-1 relative z-10 text-[10px] font-black uppercase tracking-widest text-center transition-colors duration-300 opacity-50 text-slate-500 dark:text-slate-400 hover:opacity-100 hover:text-slate-700 dark:hover:text-white">
                     CSAT
                 </button>
             </div>
@@ -170,7 +169,7 @@ export const UIHome = {
         
         slot.appendChild(wrapper);
 
-        // Bind Logic (Targeting New Section IDs)
+        // Bind Logic
         setTimeout(() => {
             const btnGS = document.getElementById('btn-gs1');
             const btnCSAT = document.getElementById('btn-csat');
@@ -178,14 +177,14 @@ export const UIHome = {
             const sectionGS = document.getElementById('section-gs1');
             const sectionCSAT = document.getElementById('section-csat');
 
-            if (!btnGS || !btnCSAT || !sectionGS) return; // Safety
+            if (!btnGS || !btnCSAT || !sectionGS) return;
 
             btnGS.onclick = () => {
                 pill.style.transform = 'translateX(0)';
                 btnGS.style.opacity = '1';
-                btnGS.classList.add('text-blue-600');
+                btnGS.className = 'flex-1 relative z-10 text-[10px] font-black uppercase tracking-widest text-center transition-colors duration-300 text-blue-600 dark:text-white';
                 btnCSAT.style.opacity = '0.5';
-                btnCSAT.classList.remove('text-blue-600');
+                btnCSAT.className = 'flex-1 relative z-10 text-[10px] font-black uppercase tracking-widest text-center transition-colors duration-300 text-slate-500 dark:text-slate-400';
                 
                 sectionGS.classList.remove('hidden');
                 sectionGS.classList.add('animate-slide-up');
@@ -195,9 +194,9 @@ export const UIHome = {
             btnCSAT.onclick = () => {
                 pill.style.transform = 'translateX(100%)';
                 btnCSAT.style.opacity = '1';
-                btnCSAT.classList.add('text-blue-600');
+                btnCSAT.className = 'flex-1 relative z-10 text-[10px] font-black uppercase tracking-widest text-center transition-colors duration-300 text-purple-600 dark:text-white';
                 btnGS.style.opacity = '0.5';
-                btnGS.classList.remove('text-blue-600');
+                btnGS.className = 'flex-1 relative z-10 text-[10px] font-black uppercase tracking-widest text-center transition-colors duration-300 text-slate-500 dark:text-slate-400';
                 
                 sectionCSAT.classList.remove('hidden');
                 sectionCSAT.classList.add('animate-slide-up');
@@ -207,15 +206,13 @@ export const UIHome = {
     },
 
     _renderSubjectGrids(slot) {
-        // 🛡️ REFACTOR: Wrappers now hold both Mock Card + Grid for clean toggling
-        
         // --- SECTION 1: GS Paper I ---
         const sectionGS = document.createElement('div');
         sectionGS.id = 'section-gs1';
         sectionGS.className = 'pb-20';
 
         // 1. Grand Mock Card
-        const mockGS = this._createMockCard('mock_gs1', 'GS Prelims Mock', 'Full Syllabus • Weighted Aggregate');
+        const mockGS = this._createMockCard('mock_gs1', 'GS Prelims Mock', 'Full Syllabus • Weighted Aggregate', 'amber');
         sectionGS.appendChild(mockGS);
 
         // 2. Subject Grid
@@ -237,7 +234,7 @@ export const UIHome = {
         sectionCSAT.className = 'hidden pb-20';
 
         // 1. Grand Mock Card
-        const mockCSAT = this._createMockCard('mock_csat', 'CSAT Mock', 'Logic & Quant • Weighted Aggregate');
+        const mockCSAT = this._createMockCard('mock_csat', 'CSAT Mock', 'Logic & Quant • Weighted Aggregate', 'purple');
         sectionCSAT.appendChild(mockCSAT);
 
         // 2. Subject Grid
@@ -258,12 +255,11 @@ export const UIHome = {
     // 5. COMPONENT HELPERS
     // ============================================================
 
-    // 🛡️ NEW: Helper for the Grand Mock Card
-    _createMockCard(id, title, subtitle) {
+    _createMockCard(id, title, subtitle, color) {
         const div = document.createElement('div');
-        div.className = 'premium-card flavor-gold p-6 rounded-[28px] mb-6 relative overflow-hidden cursor-pointer active:scale-95 transition-transform group animate-fade-in';
+        // Adaptive Grand Mock Card
+        div.className = `premium-card p-6 rounded-[28px] mb-6 relative overflow-hidden cursor-pointer active:scale-95 transition-transform group animate-fade-in bg-${color}-50 dark:bg-${color}-500/10 border border-${color}-100 dark:border-${color}-500/20`;
         
-        // Triggers the Main.handleMockSelection modal
         div.onclick = () => {
             if (window.Main && window.Main.handleMockSelection) {
                 window.Main.handleMockSelection(id);
@@ -271,23 +267,23 @@ export const UIHome = {
         };
         
         div.innerHTML = `
-            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity rotate-12">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity rotate-12 text-${color}-600 dark:text-${color}-400">
                 <i class="fa-solid fa-trophy text-6xl"></i>
             </div>
             
             <div class="relative z-10">
                 <div class="flex items-center gap-3 mb-2">
-                    <div class="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
+                    <div class="w-8 h-8 rounded-full bg-${color}-200 dark:bg-${color}-500/20 flex items-center justify-center text-${color}-600 dark:text-${color}-400">
                         <i class="fa-solid fa-star text-xs animate-pulse"></i>
                     </div>
-                    <span class="text-[9px] font-black uppercase tracking-widest text-amber-400">Official Protocol</span>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-${color}-600 dark:text-${color}-400">Official Protocol</span>
                 </div>
                 
-                <h3 class="text-xl font-black premium-text-head uppercase italic tracking-tight leading-none mb-1">${title}</h3>
-                <p class="text-xs font-bold opacity-60">${subtitle}</p>
+                <h3 class="text-xl font-black uppercase italic tracking-tight leading-none mb-1 text-${color}-800 dark:text-white">${title}</h3>
+                <p class="text-xs font-bold opacity-70 text-${color}-700 dark:text-${color}-200">${subtitle}</p>
             </div>
             
-            <div class="mt-5 flex items-center gap-2 text-[10px] font-bold opacity-40 uppercase tracking-widest group-hover:opacity-100 transition-opacity">
+            <div class="mt-5 flex items-center gap-2 text-[10px] font-bold opacity-60 uppercase tracking-widest group-hover:opacity-100 transition-opacity text-${color}-800 dark:text-white">
                 <span>Tap to Configure</span>
                 <i class="fa-solid fa-arrow-right"></i>
             </div>
@@ -298,12 +294,10 @@ export const UIHome = {
     _createSubjectTile(sub, index) {
         const div = document.createElement('div');
         const delay = index * 50; 
-        
-        // 1. Get Premium Flavor
-        const flavorClass = this._getFlavor(sub.color);
+        const color = sub.color || 'blue';
 
-        // 2. Build Card
-        div.className = `premium-card ${flavorClass} p-4 rounded-[28px] flex flex-col items-center justify-center h-44 active:scale-95 transition-transform animate-view-enter relative group`;
+        // Adaptive Subject Tile
+        div.className = `premium-card p-4 rounded-[28px] flex flex-col items-center justify-center h-44 active:scale-95 transition-transform animate-view-enter relative group bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-white/5 shadow-lg shadow-slate-200/50 dark:shadow-none`;
         div.style.animationDelay = `${delay}ms`;
         
         div.onclick = () => {
@@ -315,41 +309,19 @@ export const UIHome = {
         };
 
         div.innerHTML = `
-            <div class="icon-pillow mb-3 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-sm">
+            <div class="mb-3 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-sm w-12 h-12 rounded-2xl flex items-center justify-center text-2xl bg-${color}-50 dark:bg-${color}-500/10 text-${color}-600 dark:text-${color}-400">
                 <i class="fa-solid fa-${sub.icon}"></i>
             </div>
             
             <div class="z-10 text-center">
-                <h3 class="text-xs font-black premium-text-head uppercase tracking-wider leading-tight">${sub.name}</h3>
-                <p class="text-[9px] font-bold opacity-40 uppercase mt-1">Start Mock</p>
+                <h3 class="text-xs font-black uppercase tracking-wider leading-tight text-slate-800 dark:text-white">${sub.name}</h3>
+                <p class="text-[9px] font-bold opacity-40 uppercase mt-1 text-slate-500 dark:text-slate-400">Start Mock</p>
             </div>
 
-            <div class="absolute -right-4 -top-4 w-16 h-16 bg-[var(--accent)] opacity-10 rounded-full blur-xl group-hover:opacity-20 transition-opacity"></div>
+            <div class="absolute -right-4 -top-4 w-16 h-16 bg-${color}-500 opacity-5 dark:opacity-10 rounded-full blur-xl group-hover:opacity-20 transition-opacity pointer-events-none"></div>
         `;
         
         return div;
-    },
-
-    // Helper to map config colors to Premium Flavors
-    _getFlavor(originalColor) {
-        const map = {
-            'yellow': 'flavor-gold',
-            'orange': 'flavor-gold',
-            'amber': 'flavor-gold',
-            'blue': 'flavor-blue',
-            'indigo': 'flavor-blue',
-            'sky': 'flavor-blue',
-            'red': 'flavor-pink',
-            'rose': 'flavor-pink',
-            'pink': 'flavor-pink',
-            'green': 'flavor-green',
-            'emerald': 'flavor-green',
-            'teal': 'flavor-cyan',
-            'cyan': 'flavor-cyan',
-            'purple': 'flavor-purple',
-            'violet': 'flavor-purple'
-        };
-        return map[originalColor] || 'flavor-blue';
     }
 };
 
