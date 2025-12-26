@@ -1,6 +1,6 @@
 /**
  * CONFIGURATION REGISTRY
- * Version: 2.2.0 (Patched: Added Missing Arcade Mode)
+ * Version: 2.3.0 (Patched: Correct UPSC Marking Scheme)
  * Path: assets/js/config.js
  * Responsibilities:
  * 1. Defines the Global App Settings (Name, Version, DB).
@@ -14,7 +14,7 @@ export const CONFIG = {
     // 1. GLOBAL APP SETTINGS
     // ============================================================
     name: "UPSC SuperApp",
-    version: "3.1.0",
+    version: "3.2.0",
     debug: true, // Set to false in production to suppress console logs
     
     // Database Config (Must match what is in db.js)
@@ -109,7 +109,7 @@ export const CONFIG = {
             id: 'csat_logic',
             name: 'Logical Reasoning',
             icon: 'puzzle-piece',
-            color: 'purple', // 🛡️ FIX: Changed from 'fuchsia' to 'purple' to match UIHome flavor map
+            color: 'purple',
             weight: 0.30,
             description: 'Analytical Ability and Problem Solving'
         },
@@ -150,7 +150,6 @@ export const CONFIG = {
             color: 'yellow',
             description: 'Enhance fluid intelligence and logic.'
         },
-        // ✅ FIX: Added missing game required by Behavioral Engine
         {
             id: 'balloon_pop',
             name: 'Risk Balloon',
@@ -166,9 +165,21 @@ export const CONFIG = {
     
     settings: {
         examDate: '2026-05-25', // Target Date for countdowns
-        passingMarks: 66.6,     // CSAT Passing threshold
-        totalMarksGS: 200,      // GS Paper 1 Total
-        negativeMarking: 0.33,  // 1/3rd penalty
+        
+        // --- UPSC MARKING SCHEME ---
+        passingMarks: 66.67,     // CSAT Qualification (33% of 200)
+        
+        // GS Paper 1 (100 Qs, 200 Marks)
+        totalMarksGS: 200,
+        marksPerQuestionGS: 2.0,
+        
+        // GS Paper 2 / CSAT (80 Qs, 200 Marks)
+        totalMarksCSAT: 200,
+        marksPerQuestionCSAT: 2.5, 
+
+        // Penalty Ratio (Standard 1/3rd deduction)
+        // Use this to calculate penalty: correctMark * negativeMarkingRatio
+        negativeMarkingRatio: 1/3, 
         
         // Behavioral Thresholds (Synced with Engine)
         impulseThreshold: 1500, // ms
@@ -176,6 +187,5 @@ export const CONFIG = {
     }
 };
 
-// Global Exposure (Optional, for console debugging)
 window.CONFIG = CONFIG;
 
