@@ -1,6 +1,6 @@
 /**
  * UI-REVIEW (MISTAKE ANALYSIS)
- * Version: 2.2.0 (Patched: Grand Mock Support)
+ * Version: 2.3.0 (Patched: Answer Retrieval Logic)
  * Path: assets/js/ui/views/ui-review.js
  * Responsibilities:
  * 1. Fetches the Exam Result and the original Questions.
@@ -162,13 +162,13 @@ export const UIReview = {
         list.innerHTML = '';
 
         this.state.questions.forEach((q, index) => {
-            // 🛡️ FIX: Look up answer by INDEX, not ID
-            const userAnsIdx = (this.state.result.answers && this.state.result.answers[index] !== undefined) 
-                ? this.state.result.answers[index] 
-                : undefined;
+            
+            // 🛡️ FIX: Read 'userAnswer' directly from the question object
+            // The Engine saves it as q.userAnswer, not in a separate result.answers array.
+            const userAnsIdx = q.userAnswer;
 
             let status = 'skipped';
-            if (userAnsIdx !== undefined) {
+            if (userAnsIdx !== undefined && userAnsIdx !== null) {
                 status = (userAnsIdx === q.correctAnswer) ? 'correct' : 'wrong';
             }
 
