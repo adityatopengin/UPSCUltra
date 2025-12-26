@@ -1,6 +1,6 @@
 /**
  * UI-RESULTS (THE REPORT CARD)
- * Version: 3.4.0 (Patched: Grand Mock Support)
+ * Version: 3.5.0 (Patched: Dual Theme Support)
  * Path: assets/js/ui/views/ui-results.js
  */
 
@@ -34,7 +34,7 @@ export const UIResults = {
         }
 
         container.innerHTML = '';
-        container.className = 'view-container pb-40 min-h-screen';
+        container.className = 'view-container pb-40 min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300';
 
         // 2. Try Memory First (Fastest)
         let result = window.Main && window.Main.state ? window.Main.state.lastResult : null;
@@ -118,50 +118,50 @@ export const UIResults = {
         const mins = Math.floor((result.totalDuration || 0) / 60);
 
         return `
-        <div class="sticky top-0 z-30 px-4 py-3 flex items-center justify-between border-b border-white/5 bg-inherit backdrop-blur-md">
-            <button onclick="UIResults.handleNavigation('home')" class="w-8 h-8 rounded-full premium-panel flex items-center justify-center active:scale-95 opacity-60 hover:opacity-100">
+        <div class="sticky top-0 z-30 px-4 py-3 flex items-center justify-between border-b border-slate-200 dark:border-white/5 bg-slate-50/90 dark:bg-[#0f172a]/90 backdrop-blur-md transition-colors">
+            <button onclick="UIResults.handleNavigation('home')" class="w-8 h-8 rounded-full bg-slate-200 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-500 dark:text-white/60 flex items-center justify-center active:scale-95 hover:bg-slate-300 dark:hover:bg-white/20 transition-all">
                 <i class="fa-solid fa-arrow-left"></i>
             </button>
-            <h2 class="premium-text-head text-xs font-black uppercase tracking-widest">Performance Report</h2>
+            <h2 class="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Performance Report</h2>
             <div class="w-8"></div>
         </div>
 
         <div class="p-6 pb-2">
-            <div class="premium-card p-8 rounded-[32px] text-center relative overflow-hidden shadow-2xl">
-                <div class="w-16 h-16 mx-auto bg-${color}-500/10 text-${color}-400 rounded-full flex items-center justify-center text-2xl mb-4 shadow-lg shadow-${color}-500/10">
+            <div class="p-8 rounded-[32px] text-center relative overflow-hidden bg-white dark:bg-slate-900/50 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-white/5">
+                <div class="w-16 h-16 mx-auto bg-${color}-100 dark:bg-${color}-500/10 text-${color}-600 dark:text-${color}-400 rounded-full flex items-center justify-center text-2xl mb-4 shadow-lg shadow-${color}-500/10">
                     <i class="fa-solid fa-${config.icon}"></i>
                 </div>
-                <div class="text-5xl font-black text-white tracking-tighter mb-1 shadow-black drop-shadow-md">
+                <div class="text-5xl font-black text-slate-900 dark:text-white tracking-tighter mb-1">
                     ${result.score.toFixed(1)}
                 </div>
-                <div class="text-[10px] font-bold opacity-50 uppercase tracking-widest mb-4">
+                <div class="text-[10px] font-bold uppercase tracking-widest mb-4 text-slate-500 dark:text-slate-400">
                     Target: 66 Marks
                 </div>
-                <div class="h-2 w-full bg-white/10 rounded-full overflow-hidden mb-4">
+                <div class="h-2 w-full bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden mb-4">
                     <div id="score-bar-fill" class="h-full bg-${color}-500 w-0 transition-all duration-1000 ease-out"></div>
                 </div>
-                <div class="inline-block px-4 py-1 rounded-full bg-${color}-500/10 border border-${color}-500/20 text-${color}-400 text-xs font-black uppercase tracking-wider">
+                <div class="inline-block px-4 py-1 rounded-full bg-${color}-100 dark:bg-${color}-500/10 border border-${color}-200 dark:border-${color}-500/20 text-${color}-600 dark:text-${color}-400 text-xs font-black uppercase tracking-wider">
                     ${grade}
                 </div>
             </div>
         </div>
 
         <div class="grid grid-cols-4 gap-2 px-6 mb-2">
-             <div class="p-3 rounded-2xl premium-panel border border-white/5 text-center">
-                <div class="text-lg font-black text-emerald-400">${result.correct}</div>
-                <div class="text-[8px] font-bold opacity-50 uppercase">Right</div>
+             <div class="p-3 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-center shadow-sm">
+                <div class="text-lg font-black text-emerald-500 dark:text-emerald-400">${result.correct}</div>
+                <div class="text-[8px] font-bold uppercase text-slate-400 dark:text-white/50">Right</div>
             </div>
-            <div class="p-3 rounded-2xl premium-panel border border-white/5 text-center">
-                <div class="text-lg font-black text-rose-400">${result.wrong}</div>
-                <div class="text-[8px] font-bold opacity-50 uppercase">Wrong</div>
+            <div class="p-3 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-center shadow-sm">
+                <div class="text-lg font-black text-rose-500 dark:text-rose-400">${result.wrong}</div>
+                <div class="text-[8px] font-bold uppercase text-slate-400 dark:text-white/50">Wrong</div>
             </div>
-             <div class="p-3 rounded-2xl premium-panel border border-white/5 text-center">
-                <div class="text-lg font-black opacity-60">${result.skipped}</div>
-                <div class="text-[8px] font-bold opacity-50 uppercase">Skip</div>
+             <div class="p-3 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-center shadow-sm">
+                <div class="text-lg font-black text-slate-400 dark:text-white/60">${result.skipped}</div>
+                <div class="text-[8px] font-bold uppercase text-slate-400 dark:text-white/50">Skip</div>
             </div>
-             <div class="p-3 rounded-2xl premium-panel border border-white/5 text-center">
-                <div class="text-lg font-black text-blue-400">${mins}m</div>
-                <div class="text-[8px] font-bold opacity-50 uppercase">Time</div>
+             <div class="p-3 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-center shadow-sm">
+                <div class="text-lg font-black text-blue-500 dark:text-blue-400">${mins}m</div>
+                <div class="text-[8px] font-bold uppercase text-slate-400 dark:text-white/50">Time</div>
             </div>
         </div>
         `;
@@ -169,11 +169,11 @@ export const UIResults = {
 
     _getFooterTemplate(resultId) {
         return `
-        <div class="fixed bottom-0 left-0 w-full border-t border-white/5 p-4 z-30 flex gap-3 safe-area-pb bg-inherit backdrop-blur-md">
-            <button onclick="UIResults.handleNavigation('home')" class="flex-1 py-4 rounded-xl premium-panel font-bold uppercase tracking-widest text-xs active:scale-95 transition-transform opacity-80 hover:opacity-100">
+        <div class="fixed bottom-0 left-0 w-full border-t border-slate-200 dark:border-white/5 p-4 z-30 flex gap-3 safe-area-pb bg-slate-50/90 dark:bg-[#0f172a]/90 backdrop-blur-md transition-colors">
+            <button onclick="UIResults.handleNavigation('home')" class="flex-1 py-4 rounded-xl bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-white font-bold uppercase tracking-widest text-xs active:scale-95 transition-transform hover:bg-slate-300 dark:hover:bg-white/20">
                 Finish
             </button>
-            <button onclick="UIResults.handleNavigation('review', { id: '${resultId}' })" class="flex-1 py-4 rounded-xl bg-white text-slate-900 font-bold uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-transform hover:bg-gray-100">
+            <button onclick="UIResults.handleNavigation('review', { id: '${resultId}' })" class="flex-1 py-4 rounded-xl bg-white dark:bg-indigo-600 text-slate-900 dark:text-white font-bold uppercase tracking-widest text-xs shadow-lg border border-slate-200 dark:border-transparent active:scale-95 transition-transform hover:bg-slate-50 dark:hover:bg-indigo-500">
                 Review Mistakes
             </button>
         </div>
@@ -203,26 +203,26 @@ export const UIResults = {
         // 4. Mistakes Link
         if (result.wrong > 0) {
             grid.innerHTML += `
-            <div onclick="UIResults.handleNavigation('review', { id: '${result.id}' })" class="p-5 rounded-[24px] premium-card border border-white/5 flex items-center justify-between cursor-pointer active:scale-95 transition-transform group">
+            <div onclick="UIResults.handleNavigation('review', { id: '${result.id}' })" class="p-5 rounded-[24px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform group">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center text-xl"><i class="fa-solid fa-file-circle-xmark"></i></div>
+                    <div class="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-500/10 text-rose-500 dark:text-rose-400 flex items-center justify-center text-xl"><i class="fa-solid fa-file-circle-xmark"></i></div>
                     <div>
-                        <div class="text-[10px] font-bold opacity-50 uppercase tracking-wider mb-0.5">Focus Area</div>
-                        <div class="text-lg font-black text-slate-200 leading-tight">Review ${result.wrong} Errors</div>
+                        <div class="text-[10px] font-bold uppercase tracking-wider mb-0.5 text-slate-500 dark:text-slate-400">Focus Area</div>
+                        <div class="text-lg font-black text-slate-900 dark:text-slate-200 leading-tight">Review ${result.wrong} Errors</div>
                     </div>
                 </div>
-                <i class="fa-solid fa-chevron-right opacity-50 group-hover:opacity-100 transition-colors"></i>
+                <i class="fa-solid fa-chevron-right text-slate-300 dark:text-white/30 group-hover:text-slate-500 dark:group-hover:text-white transition-colors"></i>
             </div>`;
         }
     },
 
     _renderPsychCard(title, value, icon, color) {
         return `
-        <div class="p-5 rounded-[24px] premium-card border border-white/5 flex items-center gap-4">
-            <div class="w-12 h-12 rounded-2xl bg-${color}-500/10 text-${color}-400 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-${icon}"></i></div>
+        <div class="p-5 rounded-[24px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-${color}-100 dark:bg-${color}-500/10 text-${color}-600 dark:text-${color}-400 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-${icon}"></i></div>
             <div>
-                <div class="text-[10px] font-bold opacity-50 uppercase tracking-wider mb-0.5">${title}</div>
-                <div class="text-lg font-black text-slate-200 leading-tight">${value}</div>
+                <div class="text-[10px] font-bold uppercase tracking-wider mb-0.5 text-slate-500 dark:text-slate-400">${title}</div>
+                <div class="text-lg font-black text-slate-900 dark:text-slate-200 leading-tight">${value}</div>
             </div>
         </div>`;
     },
@@ -242,7 +242,7 @@ export const UIResults = {
     },
 
     _renderError(container, msg) {
-        container.innerHTML = `<div class="p-10 text-center opacity-60">${msg} <br><br> <button onclick="UIResults.handleNavigation('home')" class="text-white premium-panel px-4 py-2 rounded">Home</button></div>`;
+        container.innerHTML = `<div class="p-10 text-center opacity-60 text-slate-500 dark:text-slate-400">${msg} <br><br> <button onclick="UIResults.handleNavigation('home')" class="bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white px-4 py-2 rounded">Home</button></div>`;
     }
 };
 
