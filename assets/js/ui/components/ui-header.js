@@ -1,6 +1,6 @@
 /**
  * UI-HEADER (THE NAVIGATOR)
- * Version: 2.2.0 (Visual Polish: Glassmorphism + Smart Hiding)
+ * Version: 2.3.0 (Patched: Dual Theme Support)
  * Path: assets/js/ui/components/ui-header.js
  * Responsibilities:
  * 1. Renders the persistent Bottom Navigation Dock.
@@ -36,28 +36,28 @@ export const UIHeader = {
     // ============================================================
 
     _getDockTemplate() {
-        // Uses 'premium-nav' from style.css for the glass effect
+        // Updated container with adaptive background (White Glass vs Dark Glass)
         return `
-        <div class="premium-nav pointer-events-auto w-full h-16 flex items-center justify-around px-2 shadow-2xl">
+        <div class="premium-nav pointer-events-auto w-full h-16 flex items-center justify-around px-2 shadow-2xl rounded-2xl bg-white/90 dark:bg-black/20 backdrop-blur-xl border border-slate-200 dark:border-white/5 transition-all duration-300">
             
             <button onclick="Main.navigate('home')" data-tab="home" class="nav-btn w-12 h-12 rounded-xl flex items-center justify-center active:scale-95 transition-all relative group">
-                <i class="fa-solid fa-house text-xl opacity-60 group-[.active]:opacity-100 group-[.active]:text-blue-400 transition-all"></i>
-                <span class="absolute -bottom-1 w-1 h-1 bg-blue-400 rounded-full opacity-0 transition-all group-[.active]:opacity-100 shadow-[0_0_8px_#60a5fa]"></span>
+                <i class="fa-solid fa-house text-xl text-slate-400 dark:text-slate-500 group-[.active]:text-blue-600 dark:group-[.active]:text-blue-400 transition-colors"></i>
+                <span class="absolute -bottom-1 w-1 h-1 rounded-full opacity-0 transition-all group-[.active]:opacity-100 bg-blue-600 dark:bg-blue-400 shadow-[0_0_8px_rgba(37,99,235,0.5)] dark:shadow-[0_0_8px_#60a5fa]"></span>
             </button>
 
             <button onclick="Main.navigate('arcade')" data-tab="arcade" class="nav-btn w-12 h-12 rounded-xl flex items-center justify-center active:scale-95 transition-all relative group">
-                <i class="fa-solid fa-gamepad text-xl opacity-60 group-[.active]:opacity-100 group-[.active]:text-purple-400 transition-all"></i>
-                <span class="absolute -bottom-1 w-1 h-1 bg-purple-400 rounded-full opacity-0 transition-all group-[.active]:opacity-100 shadow-[0_0_8px_#c084fc]"></span>
+                <i class="fa-solid fa-gamepad text-xl text-slate-400 dark:text-slate-500 group-[.active]:text-purple-600 dark:group-[.active]:text-purple-400 transition-colors"></i>
+                <span class="absolute -bottom-1 w-1 h-1 rounded-full opacity-0 transition-all group-[.active]:opacity-100 bg-purple-600 dark:bg-purple-400 shadow-[0_0_8px_rgba(147,51,234,0.5)] dark:shadow-[0_0_8px_#c084fc]"></span>
             </button>
 
             <button onclick="Main.navigate('stats')" data-tab="stats" class="nav-btn w-12 h-12 rounded-xl flex items-center justify-center active:scale-95 transition-all relative group">
-                <i class="fa-solid fa-chart-pie text-xl opacity-60 group-[.active]:opacity-100 group-[.active]:text-emerald-400 transition-all"></i>
-                <span class="absolute -bottom-1 w-1 h-1 bg-emerald-400 rounded-full opacity-0 transition-all group-[.active]:opacity-100 shadow-[0_0_8px_#34d399]"></span>
+                <i class="fa-solid fa-chart-pie text-xl text-slate-400 dark:text-slate-500 group-[.active]:text-emerald-600 dark:group-[.active]:text-emerald-400 transition-colors"></i>
+                <span class="absolute -bottom-1 w-1 h-1 rounded-full opacity-0 transition-all group-[.active]:opacity-100 bg-emerald-600 dark:bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.5)] dark:shadow-[0_0_8px_#34d399]"></span>
             </button>
 
             <button onclick="Main.navigate('settings')" data-tab="settings" class="nav-btn w-12 h-12 rounded-xl flex items-center justify-center active:scale-95 transition-all relative group">
-                <i class="fa-solid fa-sliders text-xl opacity-60 group-[.active]:opacity-100 group-[.active]:text-amber-400 transition-all"></i>
-                <span class="absolute -bottom-1 w-1 h-1 bg-amber-400 rounded-full opacity-0 transition-all group-[.active]:opacity-100 shadow-[0_0_8px_#fbbf24]"></span>
+                <i class="fa-solid fa-sliders text-xl text-slate-400 dark:text-slate-500 group-[.active]:text-amber-600 dark:group-[.active]:text-amber-400 transition-colors"></i>
+                <span class="absolute -bottom-1 w-1 h-1 rounded-full opacity-0 transition-all group-[.active]:opacity-100 bg-amber-600 dark:bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.5)] dark:shadow-[0_0_8px_#fbbf24]"></span>
             </button>
 
         </div>
