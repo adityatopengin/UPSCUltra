@@ -1,17 +1,18 @@
 /**
  * UI-ARCADE (THE BRAIN GYM)
- * Version: 2.2.0 (Audio-Visual Polish & Haptics)
+ * Version: 2.3.0 (Patched: Behavioral Telemetry Connected)
  * Path: assets/js/ui/views/ui-arcade.js
  * Responsibilities:
  * 1. Renders the Arcade Dashboard (Game Selection).
  * 2. Manages the "Game Shell" (Canvas, Score, Timer).
  * 3. Contains logic for 3 Mini-Games with Sound & Haptics.
+ * 4. Sends Active Signals to Behavioral Engine.
  */
 
 import { CONFIG } from '../../config.js';
 import { UI } from '../ui-manager.js';
-// We might import specific Game Engines later if we separate them, 
-// but for MVP we can encapsulate simple logic here.
+// ✅ FIX: Import Behavioral Engine to enable "Active Signal" tracking
+import { BehavioralEngine } from '../../engine/behavioral-engine.js';
 
 export const UIArcade = {
     // ============================================================
@@ -411,9 +412,51 @@ export const UIArcade = {
         setTimeout(() => float.remove(), 500);
     },
 
+    // ✅ FIX: NEW METHOD TO BRIDGE GAP WITH BEHAVIORAL ENGINE
+    _sendTelemetry(win) {
+        if (!BehavioralEngine) return;
+
+        console.log("🎮 UIArcade: Sending Telemetry to Psychologist...");
+
+        // 1. Normalize Score (0.0 to 1.0) based on game type
+        let normalizedScore = 0.5;
+        let metrics = {};
+
+        if (this.state.activeGameId === 'blink_test') {
+            // Max expected score approx 2000 for good performance
+            normalizedScore = Math.min(1.0, this.state.score / 2000); 
+            metrics = { recoveryRate: win ? 0.8 : 0.4 }; 
+        } 
+        else if (this.state.activeGameId === 'pressure_valve') {
+            // High pressure survival = High Calm
+            normalizedScore = Math.min(1.0, this.state.score / 1500); 
+            metrics = { reactionTime: 1200 }; // Mock avg reaction
+        }
+        else if (this.state.activeGameId === 'pattern_architect') {
+             // Level 5+ is genius territory
+             const level = this.gameData.level || 1;
+             normalizedScore = Math.min(1.0, level / 8);
+             metrics = { adaptability: win ? 0.9 : 0.5 };
+        }
+
+        // 2. Send Signal
+        const gameType = this.state.activeGameId.toUpperCase();
+        
+        // This actually updates the "Psych Profile"
+        BehavioralEngine.processArcadeSignal(gameType, { 
+            score: parseFloat(normalizedScore.toFixed(2)),
+            metrics: metrics
+        });
+    },
+
+    // ✅ FIX: Updated _endGame to call telemetry
     _endGame(win) {
         this.state.isPlaying = false;
         clearInterval(this.state.interval);
+        
+        // SEND DATA BEFORE ALERT
+        this._sendTelemetry(win);
+
         this._playSound('error');
         alert(`Game Over! Score: ${this.state.score}`);
         this.quitGame();
