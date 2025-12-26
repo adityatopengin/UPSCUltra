@@ -1,6 +1,6 @@
 /**
  * UI-QUIZ (THE EXAM HALL)
- * Version: 2.9.1 (Patched: Input Logic Fixed - Index based)
+ * Version: 3.0.0 (Patched: Dual Theme Support)
  * Path: assets/js/ui/views/ui-quiz.js
  */
 
@@ -16,7 +16,7 @@ export const UIQuiz = {
         console.log("📝 UIQuiz: Entering Exam Hall...");
         
         container.innerHTML = '';
-        container.className = 'view-container h-screen flex flex-col overflow-hidden';
+        container.className = 'view-container h-screen flex flex-col overflow-hidden select-none';
 
         if (!Engine || !Engine.state) {
             console.warn("UIQuiz: Engine state missing. Redirecting...");
@@ -62,59 +62,59 @@ export const UIQuiz = {
         const color = config.color || 'blue';
         
         return `
-        <header class="h-16 px-4 flex items-center justify-between border-b border-white/5 z-20">
+        <header class="h-16 px-4 flex items-center justify-between border-b border-slate-200 dark:border-white/5 z-20 bg-slate-50/90 dark:bg-[#0f172a]/90 backdrop-blur-md transition-colors">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm border border-white/10 opacity-80">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 shadow-sm">
                     <i class="fa-solid fa-${config.icon}"></i>
                 </div>
                 <div>
-                    <h2 class="premium-text-head text-xs font-black uppercase tracking-wider">${config.name}</h2>
-                    <div class="flex items-center gap-2 text-[10px] font-bold opacity-50">
+                    <h2 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">${config.name}</h2>
+                    <div class="flex items-center gap-2 text-[10px] font-bold opacity-50 text-slate-500 dark:text-slate-400">
                         <span id="q-index">Q 1 / 15</span>
-                        <span class="w-1 h-1 rounded-full bg-white/20"></span>
-                        <span class="text-${color}-400">Standard Mode</span>
+                        <span class="w-1 h-1 rounded-full bg-slate-400 dark:bg-white/20"></span>
+                        <span class="text-${color}-600 dark:text-${color}-400">Standard Mode</span>
                     </div>
                 </div>
             </div>
             <div class="flex flex-col items-end">
-                <div id="quiz-timer" class="text-xl font-black font-mono tracking-tight leading-none">00:00</div>
-                <span class="text-[9px] font-bold opacity-50 uppercase mt-0.5">Time Left</span>
+                <div id="quiz-timer" class="text-xl font-black font-mono tracking-tight leading-none text-slate-900 dark:text-white">00:00</div>
+                <span class="text-[9px] font-bold opacity-50 uppercase mt-0.5 text-slate-500 dark:text-slate-400">Time Left</span>
             </div>
         </header>
 
-        <div class="h-1 w-full bg-white/5">
+        <div class="h-1 w-full bg-slate-200 dark:bg-white/5">
             <div id="timer-bar" class="h-full bg-${color}-500 transition-all duration-1000 ease-linear" style="width: 100%"></div>
         </div>
 
-        <main class="flex-1 overflow-y-auto overflow-x-hidden p-5 pb-32 relative">
-            <div id="q-card" class="animate-slide-up">
+        <main class="flex-1 overflow-y-auto overflow-x-hidden p-5 pb-32 relative bg-slate-50 dark:bg-slate-900 transition-colors">
+            <div id="q-card" class="animate-slide-up max-w-3xl mx-auto">
                 <div class="mb-8">
                     <div id="q-badge" class="hidden mb-3 flex flex-wrap gap-2"></div>
-                    <p id="q-text" class="text-lg font-medium leading-relaxed">Loading...</p>
+                    <p id="q-text" class="text-lg font-medium leading-relaxed text-slate-800 dark:text-slate-100">Loading...</p>
                 </div>
                 <div id="options-list" class="flex flex-col gap-3"></div>
             </div>
         </main>
 
-        <footer class="fixed bottom-0 left-0 w-full border-t border-white/5 p-4 z-30 flex items-center justify-between safe-area-pb bg-inherit backdrop-blur-md">
+        <footer class="fixed bottom-0 left-0 w-full border-t border-slate-200 dark:border-white/5 p-4 z-30 flex items-center justify-between safe-area-pb bg-slate-50/90 dark:bg-[#0f172a]/90 backdrop-blur-md transition-colors">
             <div class="flex items-center gap-2">
-                <button id="btn-prev" onclick="UIQuiz.prev()" class="w-12 h-12 rounded-2xl premium-panel flex items-center justify-center active:scale-95 transition-all opacity-80 hover:opacity-100"><i class="fa-solid fa-chevron-left"></i></button>
-                <button id="btn-bookmark" onclick="UIQuiz.bookmark()" class="w-12 h-12 rounded-2xl premium-panel flex items-center justify-center active:scale-95 transition-all opacity-80 hover:text-yellow-400"><i class="fa-regular fa-bookmark"></i></button>
+                <button id="btn-prev" onclick="UIQuiz.prev()" class="w-12 h-12 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-500 dark:text-white/60 flex items-center justify-center active:scale-95 transition-all hover:bg-slate-100 dark:hover:bg-white/10 shadow-sm"><i class="fa-solid fa-chevron-left"></i></button>
+                <button id="btn-bookmark" onclick="UIQuiz.bookmark()" class="w-12 h-12 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-500 dark:text-white/60 flex items-center justify-center active:scale-95 transition-all hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-slate-100 dark:hover:bg-white/10 shadow-sm"><i class="fa-regular fa-bookmark"></i></button>
             </div>
-            <button onclick="UIQuiz.toggleGrid()" class="px-6 h-12 rounded-2xl premium-panel font-bold text-sm tracking-wide uppercase active:scale-95 transition-all border border-white/5 opacity-80 hover:opacity-100"><i class="fa-solid fa-grid-2 mr-2"></i> Review</button>
-            <button id="btn-next" onclick="UIQuiz.next()" class="w-12 h-12 rounded-2xl bg-${color}-600 text-white shadow-lg hover:bg-${color}-500 active:scale-95 transition-all flex items-center justify-center"><i class="fa-solid fa-chevron-right"></i></button>
+            <button onclick="UIQuiz.toggleGrid()" class="px-6 h-12 rounded-2xl font-bold text-sm tracking-wide uppercase active:scale-95 transition-all border border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 shadow-sm"><i class="fa-solid fa-grid-2 mr-2"></i> Review</button>
+            <button id="btn-next" onclick="UIQuiz.next()" class="w-12 h-12 rounded-2xl bg-${color}-600 hover:bg-${color}-500 text-white shadow-lg shadow-${color}-500/30 active:scale-95 transition-all flex items-center justify-center"><i class="fa-solid fa-chevron-right"></i></button>
         </footer>
 
-        <div id="grid-modal" class="fixed inset-0 z-50 premium-card rounded-none hidden flex-col animate-fade-in">
-            <div class="p-6 border-b border-white/10 flex justify-between items-center">
-                <h3 class="text-lg font-black uppercase tracking-wider">Question Map</h3>
-                <button onclick="UIQuiz.toggleGrid()" class="w-10 h-10 rounded-full premium-panel"><i class="fa-solid fa-xmark"></i></button>
+        <div id="grid-modal" class="fixed inset-0 z-50 bg-slate-50 dark:bg-slate-900 hidden flex-col animate-fade-in">
+            <div class="p-6 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur">
+                <h3 class="text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white">Question Map</h3>
+                <button onclick="UIQuiz.toggleGrid()" class="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-white/50 flex items-center justify-center hover:bg-slate-300 dark:hover:bg-white/20 transition-colors"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="p-6 overflow-y-auto flex-1">
-                <div id="nav-grid" class="grid grid-cols-5 gap-3"></div>
+            <div class="p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900">
+                <div id="nav-grid" class="grid grid-cols-5 gap-3 max-w-md mx-auto"></div>
             </div>
-            <div class="p-6 border-t border-white/10">
-                <button onclick="UIQuiz.finish()" class="w-full py-4 rounded-xl bg-rose-600 text-white font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform">Submit Test</button>
+            <div class="p-6 border-t border-slate-200 dark:border-white/10 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur">
+                <button onclick="UIQuiz.finish()" class="w-full py-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black uppercase tracking-widest shadow-lg shadow-rose-500/30 active:scale-95 transition-transform">Submit Test</button>
             </div>
         </div>
         `;
@@ -185,7 +185,7 @@ export const UIQuiz = {
             // 1. Subject Badge (Only relevant in Mocks where subjects are mixed)
             if (Engine.state.subjectId && Engine.state.subjectId.startsWith('mock_') && q.subject) {
                 const subConf = this._getSubjectConfig(q.subject);
-                badgeHTML += `<span class="inline-flex items-center px-2 py-1 rounded bg-${subConf.color}-500/10 text-${subConf.color}-400 text-[10px] font-bold uppercase tracking-wider border border-${subConf.color}-500/20">
+                badgeHTML += `<span class="inline-flex items-center px-2 py-1 rounded bg-${subConf.color}-100 dark:bg-${subConf.color}-500/10 text-${subConf.color}-600 dark:text-${subConf.color}-400 text-[10px] font-bold uppercase tracking-wider border border-${subConf.color}-200 dark:border-${subConf.color}-500/20">
                     <i class="fa-solid fa-${subConf.icon} mr-1"></i> ${subConf.name}
                 </span>`;
             }
@@ -197,7 +197,7 @@ export const UIQuiz = {
                 const color = isPYQ ? 'rose' : 'cyan';
                 const icon = isPYQ ? 'building-columns' : 'flask';
                 
-                badgeHTML += `<span class="inline-flex items-center px-2 py-1 rounded bg-${color}-500/10 text-${color}-400 text-[10px] font-bold uppercase tracking-wider border border-${color}-500/20">
+                badgeHTML += `<span class="inline-flex items-center px-2 py-1 rounded bg-${color}-100 dark:bg-${color}-500/10 text-${color}-600 dark:text-${color}-400 text-[10px] font-bold uppercase tracking-wider border border-${color}-200 dark:border-${color}-500/20">
                     <i class="fa-solid fa-${icon} mr-1"></i> ${q.source}
                 </span>`;
             }
@@ -250,19 +250,27 @@ export const UIQuiz = {
 
         q.options.forEach((optText, i) => {
             const isSelected = selectedOption === i;
-            const btn = document.createElement('button');
-            const bgClass = isSelected ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' : 'premium-panel opacity-90 hover:opacity-100 hover:border-white/20';
             
-            btn.className = `w-full text-left p-4 rounded-xl relative transition-all duration-200 group ${bgClass}`;
+            // Adaptive styling for Selected vs Default
+            const bgClass = isSelected 
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 ring-2 ring-blue-400' 
+                : 'bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10';
+            
+            // Circle styling
+            const circleClass = isSelected 
+                ? 'bg-white text-blue-600' 
+                : 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/50';
+
+            const btn = document.createElement('button');
+            btn.className = `w-full text-left p-4 rounded-xl relative transition-all duration-200 group ${bgClass} shadow-sm`;
             
             btn.innerHTML = `
                 <div class="flex items-start gap-4">
-                    <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${isSelected ? 'bg-white text-blue-600' : 'bg-white/10 opacity-50'}">${String.fromCharCode(65 + i)}</div>
+                    <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${circleClass}">${String.fromCharCode(65 + i)}</div>
                     <div class="text-sm font-medium leading-snug">${optText}</div>
                 </div>
             `;
             // 🛡️ CRITICAL FIX: Pass 'index' (0,1,2...) not 'q.id' (POLY_001)
-            // This ensures the Engine saves it in the correct slot for the current session.
             btn.onclick = () => Engine.submitAnswer(index, i);
             this.dom.optionsContainer.appendChild(btn);
         });
@@ -319,13 +327,13 @@ export const UIQuiz = {
             const isCurrent = index === currentIndex;
             const isBookmarked = bookmarks.has(q.id);
             
-            let bgClass = 'premium-panel opacity-60';
-            if (isCurrent) bgClass = 'bg-white text-blue-900 ring-2 ring-blue-500';
-            else if (isAnswered) bgClass = 'bg-blue-600 text-white border-blue-500';
-            else if (isBookmarked) bgClass = 'bg-amber-500/20 text-amber-500 border-amber-500/50';
+            let bgClass = 'bg-slate-200 dark:bg-white/5 border border-transparent text-slate-500 dark:text-white/40';
+            if (isCurrent) bgClass = 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 ring-2 ring-blue-500 shadow-lg';
+            else if (isAnswered) bgClass = 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20';
+            else if (isBookmarked) bgClass = 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-500 border-amber-500/50';
 
             const btn = document.createElement('button');
-            btn.className = `w-full aspect-square rounded-lg flex flex-col items-center justify-center border transition-all ${bgClass}`;
+            btn.className = `w-full aspect-square rounded-lg flex flex-col items-center justify-center transition-all hover:scale-105 active:scale-95 ${bgClass}`;
             btn.innerHTML = `<span class="text-sm font-bold">${index + 1}</span>${isBookmarked ? '<i class="fa-solid fa-bookmark text-[8px] mt-1"></i>' : ''}`;
             
             btn.onclick = () => {
@@ -342,10 +350,12 @@ export const UIQuiz = {
         const q = questions[currentIndex];
         
         if (q && bookmarks.has(q.id)) {
-            this.dom.bookmarkBtn.className = "w-12 h-12 rounded-2xl bg-amber-500 text-white shadow-lg active:scale-95 transition-all flex items-center justify-center";
+            // Active
+            this.dom.bookmarkBtn.className = "w-12 h-12 rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/30 active:scale-95 transition-all flex items-center justify-center";
             this.dom.bookmarkBtn.innerHTML = '<i class="fa-solid fa-bookmark"></i>';
         } else {
-            this.dom.bookmarkBtn.className = "w-12 h-12 rounded-2xl premium-panel opacity-80 active:scale-95 transition-all flex items-center justify-center hover:text-amber-400";
+            // Inactive
+            this.dom.bookmarkBtn.className = "w-12 h-12 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-400 dark:text-white/60 flex items-center justify-center active:scale-95 transition-all hover:text-amber-500 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-white/10 shadow-sm";
             this.dom.bookmarkBtn.innerHTML = '<i class="fa-regular fa-bookmark"></i>';
         }
     },
