@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -12,6 +12,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <link rel="manifest" href="manifest.json">
+
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -72,7 +80,7 @@
     
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body>
+<body class="bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
     
     <script>
         // 1. Sync Errors (Syntax, Runtime)
@@ -103,9 +111,9 @@
     
     <div id="app-container" class="relative z-10 w-full min-h-screen pb-32 transition-all duration-300">
         
-        <div id="boot-loader" class="fixed inset-0 z-[100] flex flex-col items-center justify-center" style="background-color: var(--bg-app);">
-            <div class="w-16 h-16 border-4 border-t-transparent rounded-full animate-spin" style="border-color: var(--primary); border-top-color: transparent;"></div>
-            <div class="mt-6 text-xs font-bold uppercase tracking-[0.2em] animate-pulse" style="color: var(--primary);">
+        <div id="boot-loader" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 transition-colors">
+            <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <div class="mt-6 text-xs font-bold uppercase tracking-[0.2em] animate-pulse text-blue-600 dark:text-blue-400">
                 Initializing System
             </div>
         </div>
