@@ -9,7 +9,7 @@
  * - External CDNs -> Cache First (Save bandwidth).
  */
 
-const CACHE_NAME = 'upsc-superapp-v2';
+const CACHE_NAME = 'upsc-v4-theme-update'';
 
 // 1. THE APP SHELL (Download these immediately)
 // Keep this list SMALL for fast boot.
