@@ -1,6 +1,6 @@
 /**
  * MAIN.JS (FINAL PRODUCTION ROUTER)
- * Version: 3.8.0 (Patched: History API for Hardware Back Button)
+ * Version: 3.9.0 (Patched: Dual Theme Support + Mock Modal UI)
  * Path: assets/js/main.js
  * Responsibilities:
  * 1. Application Entry Point (Boot Sequence).
@@ -257,7 +257,7 @@ export const Main = {
         await this.startQuizSession(subjectId);
     },
 
-    // 🛡️ FIX: Added Mock Selection Modal Logic
+    // 🛡️ FIX: Updated Mock Selection Modal Logic for Dual Theme
     handleMockSelection(mockId) {
         // 1. Config
         const isGS = mockId === 'mock_gs1';
@@ -268,34 +268,34 @@ export const Main = {
         // 2. Create Modal DOM
         const div = document.createElement('div');
         div.id = 'mock-modal';
-        div.className = 'fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center animate-fade-in p-4';
+        div.className = 'fixed inset-0 z-[100] bg-slate-900/50 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center animate-fade-in p-4';
         
         div.innerHTML = `
             <div class="premium-card p-6 w-full max-w-sm rounded-[32px] relative overflow-hidden animate-slide-up">
                 <div class="text-center mb-6">
-                    <h3 class="text-lg font-black premium-text-head uppercase">${title}</h3>
-                    <p class="text-[10px] font-bold opacity-50 uppercase tracking-widest">Select Protocol</p>
+                    <h3 class="text-lg font-black premium-text-head uppercase text-slate-800 dark:text-white">${title}</h3>
+                    <p class="text-[10px] font-bold opacity-50 uppercase tracking-widest text-slate-600 dark:text-slate-400">Select Protocol</p>
                 </div>
                 
                 <div class="space-y-3">
-                    <button id="btn-half" class="w-full p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 flex items-center justify-between group active:scale-95 transition-all">
+                    <button id="btn-half" class="w-full p-4 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-between group active:scale-95 transition-all">
                         <div class="text-left">
-                            <div class="text-xs font-black text-blue-400 uppercase tracking-wider">Sprint Mode</div>
-                            <div class="text-[10px] font-bold opacity-50 uppercase">${half} Questions</div>
+                            <div class="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">Sprint Mode</div>
+                            <div class="text-[10px] font-bold opacity-50 uppercase text-slate-600 dark:text-slate-400">${half} Questions</div>
                         </div>
-                        <i class="fa-solid fa-bolt text-blue-400 opacity-50 group-hover:opacity-100 transition-opacity"></i>
+                        <i class="fa-solid fa-bolt text-blue-600 dark:text-blue-400 opacity-50 group-hover:opacity-100 transition-opacity"></i>
                     </button>
                     
-                    <button id="btn-full" class="w-full p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 flex items-center justify-between group active:scale-95 transition-all">
+                    <button id="btn-full" class="w-full p-4 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-between group active:scale-95 transition-all">
                         <div class="text-left">
-                            <div class="text-xs font-black text-purple-400 uppercase tracking-wider">Marathon Mode</div>
-                            <div class="text-[10px] font-bold opacity-50 uppercase">${full} Questions</div>
+                            <div class="text-xs font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider">Marathon Mode</div>
+                            <div class="text-[10px] font-bold opacity-50 uppercase text-slate-600 dark:text-slate-400">${full} Questions</div>
                         </div>
-                        <i class="fa-solid fa-flag-checkered text-purple-400 opacity-50 group-hover:opacity-100 transition-opacity"></i>
+                        <i class="fa-solid fa-flag-checkered text-purple-600 dark:text-purple-400 opacity-50 group-hover:opacity-100 transition-opacity"></i>
                     </button>
                 </div>
                 
-                <button id="btn-cancel" class="mt-6 w-full py-3 text-[10px] font-bold uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity">Cancel</button>
+                <button id="btn-cancel" class="mt-6 w-full py-3 text-[10px] font-bold uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity text-slate-800 dark:text-white">Cancel</button>
             </div>
         `;
 
@@ -363,10 +363,14 @@ export const Main = {
         this.navigate('results', { id: id });
     },
 
+    // 🛡️ FIX: Enhanced Theme Toggler with Event Dispatch
     toggleTheme() {
         document.documentElement.classList.toggle('dark');
         const isDark = document.documentElement.classList.contains('dark');
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
+
+        // Dispatch Event for UI Components to react (like settings toggle)
+        window.dispatchEvent(new CustomEvent('theme-changed', { detail: { isDark } }));
     }
 };
 
