@@ -1,6 +1,6 @@
 /**
  * UI-HOME (THE DASHBOARD)
- * Version: 3.4.0 (Patched: Dual Theme Support)
+ * Version: 3.4.1 (Patched: Oracle Import Fix & Memory Leak Protection)
  * Path: assets/js/ui/views/ui-home.js
  * Responsibilities:
  * 1. Renders the Oracle HUD (AI Prediction).
@@ -63,23 +63,39 @@ export const UIHome = {
     },
 
     async _initOracle(container) {
-        // 🛡️ FIX: Lazy Load the Oracle Component if missing
-        if (!window.UIOracle) {
+        let Component = window.UIOracle;
+
+        // 1. Try to load if missing
+        if (!Component) {
             try {
-                await import('../components/ui-oracle.js');
+                // 🛡️ FIX: Capture the exported module directly
+                // Standard imports do not automatically attach to 'window'
+                const module = await import('../components/ui-oracle.js');
+                Component = module.UIOracle;
+                
+                // Attach to window for future use (standardizing access)
+                window.UIOracle = Component;
             } catch (e) {
-                console.warn("UIHome: Oracle component missing.");
+                console.warn("UIHome: Oracle component missing.", e);
                 container.innerHTML = `<div class="p-4 text-center text-rose-500 text-xs font-bold">Oracle Offline</div>`;
                 return;
             }
         }
 
-        // 🛡️ SAFETY: Initialize & Render
-        if (window.UIOracle) {
-            window.UIOracle.init();
-            // Critical Fix: Passing the CONTAINER, not the data. 
-            // UIOracle.js handles the fetching via MasterAggregator internally.
-            window.UIOracle.render(container); 
+        // 2. Initialize & Render
+        if (Component) {
+            // 🛡️ FIX: Prevent "Event Listener Explosion" (Memory Leak)
+            // Only init if we haven't done it before to prevent duplicate listeners on navigation
+            if (!Component.state || !Component.state.isInitialized) {
+                Component.init();
+                // Mark as initialized
+                if (!Component.state) Component.state = {}; 
+                Component.state.isInitialized = true;
+            }
+
+            // 3. Render into the container
+            // We pass the container, and the component fetches its own data via MasterAggregator
+            Component.render(container); 
         }
     }, 
 
