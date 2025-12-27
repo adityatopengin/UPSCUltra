@@ -1,6 +1,6 @@
 /**
  * UI-REVIEW (MISTAKE ANALYSIS)
- * Version: 2.4.0 (Patched: Dual Theme Support)
+ * Version: 2.4.1 (Patched: Fixes Navigation ID Loss)
  * Path: assets/js/ui/views/ui-review.js
  * Responsibilities:
  * 1. Fetches the Exam Result and the original Questions.
@@ -51,12 +51,22 @@ export const UIReview = {
     },
 
     _getResultId() {
+        // 1. Memory (Immediate post-quiz)
         if (window.Main && window.Main.state && window.Main.state.lastResultId) {
             return window.Main.state.lastResultId;
         }
-        // Fallback to URL hash
+
+        // 2. Router Params (Navigation from Results Page) - 🛡️ CRITICAL FIX
+        // This is where Main.navigate('review', { id: ... }) stores the ID
+        if (window.Main && window.Main.state && window.Main.state.params && window.Main.state.params.id) {
+            return window.Main.state.params.id;
+        }
+
+        // 3. Fallback to URL hash
         const hash = window.location.hash;
         if (hash.includes('?id=')) return hash.split('?id=')[1];
+
+        // 4. Fallback to last result object
         if (window.Main && window.Main.state && window.Main.state.lastResult) {
             return window.Main.state.lastResult.id;
         }
