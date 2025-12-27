@@ -1,6 +1,6 @@
 /**
  * MAIN.JS (FINAL PRODUCTION ROUTER)
- * Version: 3.9.0 (Patched: Dual Theme Support + Mock Modal UI)
+ * Version: 3.9.1 (Patched: Navigation Fail-Safe Added)
  * Path: assets/js/main.js
  * Responsibilities:
  * 1. Application Entry Point (Boot Sequence).
@@ -157,6 +157,7 @@ export const Main = {
 
         // 🛡️ FIX: Push to Internal History Stack (unless going Home which clears stack)
         if (viewName === 'home') {
+            // 🛡️ CRITICAL FIX: Unlock navigation when returning home
             this.state.isQuizActive = false; 
             this.state.history = []; // Root reset
         } else if (this.state.currentView !== viewName) {
