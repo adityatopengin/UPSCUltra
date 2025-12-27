@@ -1,11 +1,11 @@
 /**
  * MASTER AGGREGATOR (THE MANAGER)
- * Version: 2.5.0 (Patched: Weight Injection + Schema Alignment)
+ * Version: 2.6.0 (Fix: Worker Integration & History Injection)
  * Path: assets/js/services/master-aggregator.js
  * Responsibilities:
  * 1. Spawns the background Oracle Worker.
- * 2. Gathers data from DB (Academic + Behavioral).
- * 3. Merges static config (Weights) with dynamic data (Mastery).
+ * 2. Gathers data from DB (Academic + Behavioral + History).
+ * 3. Merges static config (Weights) with dynamic data.
  * 4. Sends data to Worker and dispatches predictions to UI.
  */
 
@@ -24,6 +24,7 @@ export const MasterAggregator = {
     
     config: {
         simulationRuns: 500,
+        // Manual weights override (Optional - Worker handles this dynamically now)
         models: {
             monteCarlo: { weight: 0.50 },
             bayesian:   { weight: 0.30 },
@@ -45,13 +46,14 @@ export const MasterAggregator = {
         if (this.worker || this._useFallbackMode) return; 
 
         if (window.Worker) {
-                         try {
+            try {
                 // 🛡️ FIX: Relative Path is required for GitHub Pages & Sub-folders
                 const workerPath = './assets/js/workers/oracle.worker.js'; 
 
                 this.worker = new Worker(workerPath);
                 
-                this.worker.onmessage = (e) => this._handleWorkerResponse(e);
+                // 🛡️ FIX: Bind context to ensure 'this' refers to MasterAggregator
+                this.worker.onmessage = this._handleWorkerResponse.bind(this);
                 
                 this.worker.onerror = (err) => {
                     // Log the full error object to see the real cause
@@ -87,7 +89,14 @@ export const MasterAggregator = {
 
         try {
             const telemetry = await this._gatherTelemetry();
-            const currentSignature = JSON.stringify(telemetry);
+            
+            // Generate signature to prevent re-running on identical data
+            // We include history length in signature now
+            const currentSignature = JSON.stringify({
+                ac: telemetry.academic,
+                bh: telemetry.behavioral,
+                histCount: telemetry.rawHistory ? telemetry.rawHistory.length : 0
+            });
 
             if (this.lastPrediction && this.lastDataSignature === currentSignature) {
                 return this.lastPrediction;
@@ -98,9 +107,12 @@ export const MasterAggregator = {
 
             return new Promise((resolve) => {
                 if (this.worker && !this._useFallbackMode) {
+                    // 🚀 FIX: SEND HISTORY SEPARATELY
+                    // The Worker V3.1.0 expects { command, data, history, config }
                     this.worker.postMessage({
                         command: 'RUN_ENSEMBLE',
-                        data: telemetry,
+                        data: telemetry, // Contains academic & behavioral
+                        history: telemetry.rawHistory, // REQUIRED for "25 Exam" Rule
                         config: this.config
                     });
                     this._pendingResolve = resolve;
@@ -125,15 +137,17 @@ export const MasterAggregator = {
 
     async _gatherTelemetry() {
         const academicState = {};
+        let fullHistory = [];
         
         try {
             await DB.connect();
+            
+            // 1. Get Academic Snapshot
             const academicRaw = await DB.getAll('academic_state');
             
             if (academicRaw && academicRaw.length > 0) {
                 academicRaw.forEach(item => {
                     // 🛡️ FIX: Inject 'Weight' from AcademicEngine Config
-                    // The Worker needs 'sub.weight' to calculate points, but DB only has mastery.
                     const subjectConfig = AcademicEngine.SUBJECTS[item.subjectId];
                     const weight = subjectConfig ? subjectConfig.weight : 0.1;
 
@@ -145,10 +159,16 @@ export const MasterAggregator = {
                     };
                 });
             }
+
+            // 2. 🛡️ CRITICAL FIX: Get Full History for Worker Analysis
+            // The worker needs the actual records to calculate 'historyDepth' and volatility.
+            fullHistory = await DB.getAll('history');
+
         } catch (e) {
-            console.warn("🔮 Oracle: Academic data fetch failed.", e);
+            console.warn("🔮 Oracle: Data fetch incomplete.", e);
         }
 
+        // 3. Get Behavioral Profile
         let behavioralProfile = null;
         try {
             behavioralProfile = await DB.get('profiles', 'user_1');
@@ -163,18 +183,13 @@ export const MasterAggregator = {
                 panicMod: 1.0
             };
         }
-
-        let historyCount = 0;
-        try {
-            const historyKeys = await DB.getRandomKeys('history', null, null, 10000); 
-            historyCount = historyKeys.length;
-        } catch (e) {}
         
         return {
             academic: academicState,
             behavioral: behavioralProfile,
+            rawHistory: fullHistory || [], // Passed to 'history' prop in postMessage
             meta: {
-                totalTests: historyCount,
+                totalTests: fullHistory ? fullHistory.length : 0,
                 daysToExam: this._getDaysToExam()
             }
         };
@@ -185,21 +200,26 @@ export const MasterAggregator = {
     // ============================================================
 
     _handleWorkerResponse(e) {
-        const { status, result } = e.data;
+        // 🛡️ CRITICAL FIX: Flat Structure Handling
+        // Worker V3.1.0 returns { status: 'SUCCESS', score: 145... } 
+        // It is NOT nested inside a 'result' key anymore.
+        const response = e.data;
 
-        if (status === 'SUCCESS') {
-            this.lastPrediction = result;
+        if (response.status === 'SUCCESS') {
+            this.lastPrediction = response;
             this.isCalculating = false;
 
             if (this._pendingResolve) {
-                this._pendingResolve(result);
+                this._pendingResolve(response);
                 this._pendingResolve = null;
             }
-            window.dispatchEvent(new CustomEvent('oracle-update', { detail: result }));
-        } else if (status === 'PONG') {
+            // Dispatch event for UI-Oracle to pick up
+            window.dispatchEvent(new CustomEvent('oracle-update', { detail: response }));
+            
+        } else if (response.status === 'PONG') {
             console.log("🔮 Oracle Connection Verified.");
         } else {
-            console.error("🔮 Oracle Worker Error:", e.data.message);
+            console.error("🔮 Oracle Worker Error:", response.message);
             this.isCalculating = false;
         }
     },
@@ -234,8 +254,8 @@ export const MasterAggregator = {
         else if (score > 75) { probability = 25; color = '#FF5722'; } 
         else { probability = 10; color = '#F44336'; }
 
-        const range = prediction.range || { min: score * 0.9, max: score * 1.1 };
-        const bellCurveData = this._generateBellCurvePoints(score, range);
+        // Use Worker's calculated curve if available, otherwise generate simple one
+        const bellCurveData = prediction.bellCurve || this._generateBellCurvePoints(score, prediction.range);
 
         return {
             displayScore: score,
@@ -248,8 +268,10 @@ export const MasterAggregator = {
     },
 
     _generateBellCurvePoints(mean, range) {
+        // Fallback generator if worker data is missing
         const points = [];
-        const stdDev = Math.max(1, (range.max - range.min) / 6); 
+        const safeRange = range || { min: mean * 0.9, max: mean * 1.1 };
+        const stdDev = Math.max(1, (safeRange.max - safeRange.min) / 6); 
         
         for (let i = -3; i <= 3; i += 0.3) {
             const x = mean + (i * stdDev);
@@ -290,7 +312,9 @@ export const MasterAggregator = {
             range: { min: safeScore * 0.85, max: safeScore * 1.15 },
             confidence: 0.5,
             flags: ["LOW_POWER_MODE"], 
-            breakdown: { mc: safeScore, bayesian: safeScore, pattern: safeScore }
+            // Return dummy curve to prevent UI crash
+            bellCurve: [ { x: safeScore - 10, y: 0.1 }, { x: safeScore, y: 1 }, { x: safeScore + 10, y: 0.1 } ]
         };
     }
 };
+
