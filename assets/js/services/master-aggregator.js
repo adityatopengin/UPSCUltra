@@ -224,7 +224,8 @@ export const MasterAggregator = {
         }
     },
 
-    // ============================================================
+    
+     // ============================================================
     // 6. UI FORMATTERS
     // ============================================================
 
@@ -234,17 +235,28 @@ export const MasterAggregator = {
         const score = prediction.score;
         const flags = prediction.flags || [];
 
+        // 1. EXTRACT DATA (PRIORITY: WORKER)
+        // We try to use 'prediction.bellCurve' (High Precision from Worker).
+        // If it's missing (undefined), we fall back to '_generateBellCurvePoints' (Simple Math).
+        const bellCurveData = (prediction.bellCurve && prediction.bellCurve.length > 0) 
+            ? prediction.bellCurve 
+            : this._generateBellCurvePoints(score, prediction.range);
+
+        // 2. HANDLE CSAT DISQUALIFICATION
         if (flags.includes("CSAT_CRITICAL_FAIL")) {
             return {
                 displayScore: score,
                 probabilityText: "CSAT DISQUALIFIED",
                 probabilityValue: 0,
                 color: '#F44336',
-                chartData: [],
+                // ✅ FIX: We now pass the 'bellCurveData' so the chart still draws
+                // previously this was [], which caused the blank space.
+                chartData: bellCurveData, 
                 warnings: ["CSAT Score < 66", ...flags]
             };
         }
 
+        // 3. STANDARD SCORING LOGIC
         let probability = 0;
         let color = '#F44336'; 
 
@@ -254,15 +266,12 @@ export const MasterAggregator = {
         else if (score > 75) { probability = 25; color = '#FF5722'; } 
         else { probability = 10; color = '#F44336'; }
 
-        // Use Worker's calculated curve if available, otherwise generate simple one
-        const bellCurveData = prediction.bellCurve || this._generateBellCurvePoints(score, prediction.range);
-
         return {
             displayScore: score,
             probabilityText: `${probability}% CHANCE`,
             probabilityValue: probability,
             color: color,
-            chartData: bellCurveData,
+            chartData: bellCurveData, // Uses the Worker data
             warnings: flags
         };
     },
