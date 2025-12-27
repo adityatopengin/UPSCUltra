@@ -1,10 +1,10 @@
 /**
  * UI-ORACLE (THE HOLOGRAM)
- * Version: 2.2.0 (Patched: Dual Theme Support)
+ * Version: 2.3.0 (Optimized: Uses Worker-Generated Curve)
  * Path: assets/js/ui/components/ui-oracle.js
  * Responsibilities:
  * 1. Visualizes the AI Prediction (Score + Probability).
- * 2. Renders the Bell Curve Chart.
+ * 2. Renders the Bell Curve Chart (Directly from Worker).
  * 3. Listens for 'oracle-update' events from MasterAggregator.
  */
 
@@ -155,18 +155,24 @@ export const UIOracle = {
 
         const isDark = document.documentElement.classList.contains('dark');
 
-        // Generate Bell Curve Points
-        // We use MasterAggregator's logic essentially: Mean = Score, Range = Min/Max
-        const mean = prediction.score;
-        const sigma = (prediction.range.max - prediction.range.min) / 4; // Approx std dev
-        
-        const dataPoints = [];
-        const labels = [];
-        
-        for (let x = mean - (2 * sigma); x <= mean + (2 * sigma); x += (sigma / 5)) {
-            const y = (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / sigma, 2));
-            dataPoints.push(y);
-            labels.push(Math.round(x));
+        // UPGRADE: Use Worker-Generated Curve Data
+        // Prioritize 'bellCurve' array from Worker. If missing, fallback to local math.
+        let dataPoints = [];
+        let labels = [];
+
+        if (prediction.bellCurve && Array.isArray(prediction.bellCurve) && prediction.bellCurve.length > 0) {
+            // Mapping Worker Data: [{x, y}, {x, y}] -> Arrays
+            labels = prediction.bellCurve.map(p => p.x);
+            dataPoints = prediction.bellCurve.map(p => p.y);
+        } else {
+            // Fallback Logic (Legacy Protection)
+            const mean = prediction.score;
+            const sigma = (prediction.range.max - prediction.range.min) / 4; 
+            for (let x = mean - (2 * sigma); x <= mean + (2 * sigma); x += (sigma / 5)) {
+                const y = (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / sigma, 2));
+                dataPoints.push(y);
+                labels.push(Math.round(x));
+            }
         }
 
         // Create Gradient 
