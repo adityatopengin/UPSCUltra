@@ -157,6 +157,7 @@ export const Main = {
 
         // 🛡️ FIX: Push to Internal History Stack (unless going Home which clears stack)
         if (viewName === 'home') {
+            this.state.isQuizActive = false; 
             this.state.history = []; // Root reset
         } else if (this.state.currentView !== viewName) {
             this.state.history.push({
