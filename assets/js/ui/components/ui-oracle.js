@@ -1,6 +1,6 @@
 /**
  * UI-ORACLE (THE HOLOGRAM)
- * Version: 2.3.0 (Optimized: Uses Worker-Generated Curve)
+ * Version: 2.5.0 (Patched: Instant Load & Worker Curve Priority)
  * Path: assets/js/ui/components/ui-oracle.js
  * Responsibilities:
  * 1. Visualizes the AI Prediction (Score + Probability).
@@ -16,7 +16,8 @@ export const UIOracle = {
     // ============================================================
     state: {
         chartInstance: null,
-        lastPrediction: null
+        lastPrediction: null,
+        isInitialized: false 
     },
 
     // ============================================================
@@ -24,6 +25,9 @@ export const UIOracle = {
     // ============================================================
 
     init() {
+        // Prevent duplicate listeners
+        if (this.state.isInitialized) return;
+
         console.log("🔮 UIOracle: Listening for prophecies...");
         
         window.addEventListener('oracle-update', (e) => {
@@ -36,13 +40,15 @@ export const UIOracle = {
                 this._renderChart(this.state.lastPrediction);
             }
         });
+
+        this.state.isInitialized = true;
     },
 
     /**
      * 🛡️ FIX: The Missing Method
      * This is called by UIHome to mount the component.
      */
-    render(container) {
+    async render(container) {
         if (!container) return;
 
         container.innerHTML = `
@@ -69,7 +75,7 @@ export const UIOracle = {
                     <div class="h-32 w-full relative">
                         <canvas id="oracle-chart"></canvas>
                         
-                        <div id="oracle-loader" class="absolute inset-0 flex items-center justify-center">
+                        <div id="oracle-loader" class="absolute inset-0 flex items-center justify-center transition-opacity duration-300">
                             <div class="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
                         </div>
                     </div>
@@ -80,10 +86,21 @@ export const UIOracle = {
             </div>
         `;
 
-        // Trigger Data Fetch immediately
-        setTimeout(() => {
-            MasterAggregator.getPrediction();
-        }, 500);
+        // 🛡️ CRITICAL FIX: Handle Cache Hits (Instant Load)
+        // We await the result. If MasterAggregator has it cached, it returns immediately.
+        try {
+            const prediction = await MasterAggregator.getPrediction();
+            
+            if (prediction) {
+                // Case A: Fresh data or Cache Hit
+                this._updateUI(prediction);
+            } else if (this.state.lastPrediction) {
+                // Case B: Aggregator busy, but we have local stale data
+                this._updateUI(this.state.lastPrediction);
+            }
+        } catch (e) {
+            console.warn("Oracle Render Fetch Error:", e);
+        }
     },
 
     // ============================================================
@@ -130,6 +147,7 @@ export const UIOracle = {
                 if (flag === 'GAMBLER_RISK') { icon = 'dice'; color = 'amber'; }
                 if (flag === 'FATIGUE_RISK') { icon = 'battery-quarter'; color = 'orange'; }
                 if (flag === 'PANIC_PRONE') { icon = 'face-dizzy'; color = 'purple'; }
+                if (flag === 'CSAT_CRITICAL_FAIL') { icon = 'ban'; color = 'red'; }
 
                 // Adaptive Pill Style
                 return `<span class="px-2 py-1 rounded bg-${color}-100 dark:bg-${color}-500/10 border border-${color}-200 dark:border-${color}-500/20 text-${color}-600 dark:text-${color}-400 text-[9px] font-bold uppercase flex items-center gap-1">
@@ -156,15 +174,21 @@ export const UIOracle = {
         const isDark = document.documentElement.classList.contains('dark');
 
         // UPGRADE: Use Worker-Generated Curve Data
-        // Prioritize 'bellCurve' array from Worker. If missing, fallback to local math.
+        // Priority 1: 'chartData' from Aggregator (Normalized)
+        // Priority 2: 'bellCurve' from Worker (Raw)
+        // Priority 3: Fallback Math
         let dataPoints = [];
         let labels = [];
 
-        if (prediction.bellCurve && Array.isArray(prediction.bellCurve) && prediction.bellCurve.length > 0) {
-            // Mapping Worker Data: [{x, y}, {x, y}] -> Arrays
+        if (prediction.chartData && Array.isArray(prediction.chartData) && prediction.chartData.length > 0) {
+            labels = prediction.chartData.map(p => p.x);
+            dataPoints = prediction.chartData.map(p => p.y);
+        }
+        else if (prediction.bellCurve && Array.isArray(prediction.bellCurve) && prediction.bellCurve.length > 0) {
             labels = prediction.bellCurve.map(p => p.x);
             dataPoints = prediction.bellCurve.map(p => p.y);
-        } else {
+        } 
+        else {
             // Fallback Logic (Legacy Protection)
             const mean = prediction.score;
             const sigma = (prediction.range.max - prediction.range.min) / 4; 
@@ -213,4 +237,8 @@ export const UIOracle = {
         });
     }
 };
+
+// 🛡️ GLOBAL BINDING
+// Ensures UIHome can find it even if import fails
+window.UIOracle = UIOracle;
 
