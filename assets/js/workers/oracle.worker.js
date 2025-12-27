@@ -1,6 +1,6 @@
 /**
  * ORACLE WORKER (BACKGROUND INTELLIGENCE)
- * Version: 3.1.0 (Optimized: Correlated Simulation & Fuzzy Logic)
+ * Version: 3.2.0 (Patched: Data Overwrite Fix)
  * Path: assets/js/workers/oracle.worker.js
  */
 
@@ -26,10 +26,11 @@ self.onmessage = function(e) {
             return;
         }
 
-        // B. INPUT NORMALIZATION
-        // If 'history' is passed (Legacy Mode), convert it.
-        // If nothing is passed, create empty structure to prevent crashes.
-        if (history) {
+        // B. INPUT NORMALIZATION (CRITICAL FIX)
+        // Previous Bug: If 'history' existed, it overwrote 'data' completely.
+        // Fix: Only build data from history if 'data' is missing or empty.
+        // Otherwise, preserve the 'data' (which contains Behavioral Profile) and just use 'history' for depth checks.
+        if (history && (!data || !data.academic)) {
             data = _transformHistoryToData(history);
         } else if (!data) {
             data = { academic: {}, behavioral: {} };
@@ -52,7 +53,7 @@ self.onmessage = function(e) {
         // D. RUN SIMULATION
         if (command === 'RUN_ENSEMBLE' || command === undefined) { 
             // Default to running if command is missing but data exists
-            const result = runEnsembleSimulation(data, config || { simulationRuns: 500 });
+            const result = runEnsembleSimulation(data, config || { simulationRuns: 500 }, history);
             
             self.postMessage({
                 status: 'SUCCESS',
@@ -85,7 +86,7 @@ self.onmessage = function(e) {
 // 3. ENSEMBLE ENGINE
 // ============================================================
 
-function runEnsembleSimulation(telemetry, config) {
+function runEnsembleSimulation(telemetry, config, rawHistory) {
     // 1. Latin Hypercube (Stress Test with Global Bias)
     const lhsResult = runLatinHypercube(telemetry, config.simulationRuns);
 
@@ -97,8 +98,13 @@ function runEnsembleSimulation(telemetry, config) {
 
     // 4. Stacking (Dynamic Weighting)
     // Check how much history we have to decide trust levels
+    // We prioritize the raw history array length if available
     let historyDepth = 0;
-    if (telemetry.academic) {
+    
+    if (Array.isArray(rawHistory)) {
+        historyDepth = rawHistory.length;
+    } else if (telemetry.academic) {
+        // Fallback: Count scores inside academic objects
         Object.values(telemetry.academic).forEach(sub => {
             if (sub && sub.scores) historyDepth += sub.scores.length;
         });
