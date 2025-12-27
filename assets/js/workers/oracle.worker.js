@@ -1,6 +1,6 @@
 /**
  * ORACLE WORKER (BACKGROUND INTELLIGENCE)
- * Version: 3.0.0 (Final Fix: Null Pointer & Serialization Patch)
+ * Version: 3.1.0 (Optimized: Correlated Simulation & Fuzzy Logic)
  * Path: assets/js/workers/oracle.worker.js
  */
 
@@ -26,7 +26,7 @@ self.onmessage = function(e) {
             return;
         }
 
-        // B. INPUT NORMALIZATION (Crucial Fix)
+        // B. INPUT NORMALIZATION
         // If 'history' is passed (Legacy Mode), convert it.
         // If nothing is passed, create empty structure to prevent crashes.
         if (history) {
@@ -35,7 +35,7 @@ self.onmessage = function(e) {
             data = { academic: {}, behavioral: {} };
         }
 
-        // C. EMPTY STATE HANDLING (The Fix for "New User" Crash)
+        // C. EMPTY STATE HANDLING
         // If there is no academic data, return a Safe Default immediately.
         if (!data.academic || Object.keys(data.academic).length === 0) {
             self.postMessage({
@@ -86,28 +86,53 @@ self.onmessage = function(e) {
 // ============================================================
 
 function runEnsembleSimulation(telemetry, config) {
-    // 1. Latin Hypercube (Stress Test)
+    // 1. Latin Hypercube (Stress Test with Global Bias)
     const lhsResult = runLatinHypercube(telemetry, config.simulationRuns);
 
     // 2. Bayesian (Confidence)
     const bayesianResult = runBayesianAdjustment(telemetry, lhsResult.averageScore);
 
-    // 3. Pattern Recognition (Flags)
+    // 3. Pattern Recognition (Fuzzy Flags)
     const patternResult = runPatternRecognition(telemetry, lhsResult.averageScore);
 
-    // 4. Stacking
-    const weights = (config && config.models) ? config.models : { 
-        monteCarlo: { weight: 0.5 }, 
-        bayesian: { weight: 0.3 }, 
-        xgboost: { weight: 0.2 } 
-    };
+    // 4. Stacking (Dynamic Weighting)
+    // Check how much history we have to decide trust levels
+    let historyDepth = 0;
+    if (telemetry.academic) {
+        Object.values(telemetry.academic).forEach(sub => {
+            if (sub && sub.scores) historyDepth += sub.scores.length;
+        });
+    }
+
+    // Default weights
+    let wMC = 0.5; // Monte Carlo
+    let wBay = 0.3; // Bayesian
+    let wPat = 0.2; // Pattern (XGBoost logic)
+
+    // UPGRADE: Adjust weights based on data availability
+    if (config && config.models) {
+        // Allow manual override
+        wMC = config.models.monteCarlo.weight;
+        wBay = config.models.bayesian.weight;
+        wPat = config.models.xgboost.weight;
+    } else if (historyDepth > 25) {
+        // High History: Trust Bayesian/History more
+        wMC = 0.3;
+        wBay = 0.6;
+        wPat = 0.1;
+    } else if (historyDepth < 3) {
+        // Low History: Trust Simulation more
+        wMC = 0.6;
+        wBay = 0.2;
+        wPat = 0.2;
+    }
     
-    const totalW = weights.monteCarlo.weight + weights.bayesian.weight + weights.xgboost.weight;
+    const totalW = wMC + wBay + wPat;
     
     const finalScore = (
-        (lhsResult.averageScore * weights.monteCarlo.weight) +
-        (bayesianResult.score   * weights.bayesian.weight) +
-        (patternResult.score    * weights.xgboost.weight)
+        (lhsResult.averageScore * wMC) +
+        (bayesianResult.score   * wBay) +
+        (patternResult.score    * wPat)
     ) / totalW;
 
     // Generate Chart Data
@@ -159,17 +184,26 @@ function runLatinHypercube(data, runs) {
     for (let i = 0; i < runs; i++) {
         let currentRunScore = 0;
         const percentile = (i + 0.5) / runs; 
-        const zScore = _boxMullerTransform(percentile); 
+
+        // UPGRADE: Global "Day Luck" Factor
+        // Simulates that if you have a bad day, ALL subjects suffer.
+        // If Day Factor is low, it pulls down all subjects slightly.
+        const dayFactor = _boxMullerTransform(Math.random()); 
 
         subjectPotentials.forEach(sub => {
             const b = data.behavioral || {};
             const focusMod = b.sillyMistakeMod || 1.0; 
             const panicMod = b.panicMod || 1.0;
 
+            // Mix specific subject noise with global day noise (70% subject / 30% day)
+            const rawZ = _boxMullerTransform(percentile);
+            const zScore = (rawZ * 0.7) + (dayFactor * 0.3);
+
             const noise = sub.volatility * zScore * 5; 
             let simulatedPoints = sub.basePoints + noise;
             simulatedPoints *= focusMod; 
             
+            // Panic penalty applies more harshly on bad luck rolls
             if (zScore < -1.0) simulatedPoints *= panicMod; 
             
             // Clamp individual subject score
@@ -206,7 +240,7 @@ function runBayesianAdjustment(data, avgScore) {
     }
 
     const globalConfidence = subjectCount > 0 ? (totalConfidence / subjectCount) : 0.1;
-    const conservativeBaseline = 50; // Lower baseline for realism
+    const conservativeBaseline = 50; 
     
     // Confidence Weighted Average
     const adjustedScore = (avgScore * globalConfidence) + (conservativeBaseline * (1 - globalConfidence));
@@ -223,20 +257,44 @@ function runPatternRecognition(data, currentScore) {
     const b = data.behavioral || {};
     const ac = data.academic || {};
 
-    if ((b.riskMod || 1) > 1.03 && (b.sillyMistakeMod || 1) < 0.95) {
-        modifiedScore -= 12;
-        flags.push("GAMBLER_RISK");
-    }
-    if ((b.fatigueMod || 1) < 0.96) {
-        modifiedScore -= 8;
-        flags.push("FATIGUE_RISK");
-    }
-    if ((b.panicMod || 1) < 0.92) {
-        modifiedScore -= 5;
-        flags.push("PANIC_PRONE");
+    // UPGRADE: Fuzzy Logic Implementation (Sliding Scale)
+    // We keep strict flag names for UI compatibility but smooth the scoring logic.
+
+    // 1. GAMBLER_RISK
+    // Penalize heavily if high risk AND high silly mistakes
+    if ((b.riskMod || 1.0) > 1.0) {
+        const excessRisk = b.riskMod - 1.0;
+        const mistakeFactor = 1.0 - (b.sillyMistakeMod || 1.0); // 0.1 means 10% penalty
+        
+        // If you take risks AND make mistakes, the penalty multiplies
+        if (mistakeFactor > 0) {
+            const riskPenalty = excessRisk * 200 * (1 + mistakeFactor);
+            modifiedScore -= riskPenalty;
+
+            // Trigger flag only if impact is significant
+            if (riskPenalty > 8) flags.push("GAMBLER_RISK");
+        }
     }
 
-    // CSAT Check
+    // 2. FATIGUE_RISK
+    if ((b.fatigueMod || 1) < 0.96) {
+        const fatigueSeverity = 0.96 - b.fatigueMod;
+        const penalty = fatigueSeverity * 100; // Linear penalty
+        modifiedScore -= Math.max(4, penalty); // Minimum 4 point hit
+        flags.push("FATIGUE_RISK");
+    }
+
+    // 3. PANIC_PRONE
+    if ((b.panicMod || 1) < 1.0) {
+        const panicSeverity = 1.0 - b.panicMod;
+        const penalty = panicSeverity * 50; 
+        modifiedScore -= penalty;
+        
+        // Only flag if panic is causing real damage (> 5 points)
+        if (penalty > 5) flags.push("PANIC_PRONE");
+    }
+
+    // 4. CSAT Check (Critical Logic - Kept Static)
     let csatScore = 0;
     let hasCsatData = false;
     ['csat_quant', 'csat_logic', 'csat_rc'].forEach(id => {
@@ -327,3 +385,4 @@ function _transformHistoryToData(history) {
 
     return { academic, behavioral };
 }
+
