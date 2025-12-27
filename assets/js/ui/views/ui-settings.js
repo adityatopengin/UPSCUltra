@@ -205,14 +205,29 @@ export const UISettings = {
         }, 3500);
     },
 
-    _renderStorageResult() {
-        // NOW we do the heavy calculation
-        const getsize = (key) => Math.round((localStorage.getItem(key) || "").length / 1024);
-        
-        const historySize = getsize('history');
-        const questionsSize = getsize('questions'); // This is the big one
-        const academicSize = getsize('academic_state');
-        const totalSize = Math.round(JSON.stringify(localStorage).length / 1024);
+         async _renderStorageResult() {
+        // 1. Helper to calculate size of an object in KB
+        const calculateKB = (data) => Math.round(JSON.stringify(data).length / 1024);
+
+        let questionsSize = 0;
+        let historySize = 0;
+        let academicSize = 0;
+
+        try {
+            // 2. Fetch REAL data from IndexedDB
+            const questions = await DB.getAll('questions') || [];
+            const history = await DB.getAll('history') || [];
+            const academic = await DB.getAll('academic_state') || [];
+
+            // 3. Calculate Sizes
+            questionsSize = calculateKB(questions);
+            historySize = calculateKB(history);
+            academicSize = calculateKB(academic);
+        } catch (e) {
+            console.warn("Audit failed to read DB:", e);
+        }
+
+        const totalSize = (questionsSize + historySize + academicSize).toFixed(2);
 
         const container = document.getElementById('sarkari-container');
         if(!container) return;
@@ -255,7 +270,7 @@ export const UISettings = {
                     
                     <div class="flex items-center justify-between p-4 border-t border-slate-200 dark:border-white/5 mt-1 rounded-b-lg">
                         <span class="text-[10px] font-black opacity-40 uppercase tracking-widest text-slate-600 dark:text-slate-400">Total Bureaucratic Burden</span>
-                        <span class="text-sm font-black font-mono text-slate-900 dark:text-white">${(totalSize/1024).toFixed(2)} MB</span>
+                        <span class="text-sm font-black font-mono text-slate-900 dark:text-white">${totalSize} KB</span>
                     </div>
                 </div>
 
@@ -265,6 +280,7 @@ export const UISettings = {
             </div>
         `;
     },
+
     
     _handleEasterEgg() {
         this.state.clickCount++;
