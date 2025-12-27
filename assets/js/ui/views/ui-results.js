@@ -1,6 +1,6 @@
 /**
  * UI-RESULTS (THE REPORT CARD)
- * Version: 3.5.0 (Patched: Dual Theme Support)
+ * Version: 3.5.1 (Patched: Fixes Reload Crash via Router Params)
  * Path: assets/js/ui/views/ui-results.js
  */
 
@@ -83,9 +83,18 @@ export const UIResults = {
     },
 
     _getResultId() {
+        // 1. Memory (Immediate post-quiz)
         if (window.Main && window.Main.state && window.Main.state.lastResultId) {
             return window.Main.state.lastResultId;
         }
+        
+        // 2. Router Params (Reload/Deep Link) - 🛡️ CRITICAL FIX
+        // Main.js puts the ID here when handling a URL like #results?id=...
+        if (window.Main && window.Main.state && window.Main.state.params && window.Main.state.params.id) {
+            return window.Main.state.params.id;
+        }
+
+        // 3. URL Hash (Fallback if Router didn't clean up)
         const hash = window.location.hash;
         if (hash.includes('?id=')) {
             return hash.split('?id=')[1];
