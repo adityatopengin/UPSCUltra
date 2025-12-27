@@ -1,6 +1,6 @@
 /**
  * ORACLE WORKER (BACKGROUND INTELLIGENCE)
- * Version: 3.2.0 (Patched: Data Overwrite Fix)
+ * Version: 3.3.0 (Patched: Pure GS Prediction Logic)
  * Path: assets/js/workers/oracle.worker.js
  */
 
@@ -170,7 +170,11 @@ function runLatinHypercube(data, runs) {
 
     // Safety Check
     if (!data.academic) return { averageScore: 0, minScore: 0, maxScore: 0 };
-    const subjects = Object.keys(data.academic);
+    
+    // UPGRADE: Pure GS Logic
+    // Filter OUT CSAT subjects to prevent score inflation
+    const subjects = Object.keys(data.academic).filter(id => !id.startsWith('csat_'));
+    
     if (subjects.length === 0) return { averageScore: 0, minScore: 0, maxScore: 0 };
 
     const subjectPotentials = subjects.map(subId => {
@@ -237,12 +241,16 @@ function runBayesianAdjustment(data, avgScore) {
     let subjectCount = 0;
 
     if (data.academic) {
-        Object.values(data.academic).forEach(sub => {
-            if (sub) {
-                totalConfidence += (sub.stability || 0.5);
-                subjectCount++;
-            }
-        });
+        // UPGRADE: Calculate confidence using ONLY GS subjects
+        Object.keys(data.academic)
+            .filter(id => !id.startsWith('csat_'))
+            .forEach(subId => {
+                const sub = data.academic[subId];
+                if (sub) {
+                    totalConfidence += (sub.stability || 0.5);
+                    subjectCount++;
+                }
+            });
     }
 
     const globalConfidence = subjectCount > 0 ? (totalConfidence / subjectCount) : 0.1;
@@ -301,6 +309,8 @@ function runPatternRecognition(data, currentScore) {
     }
 
     // 4. CSAT Check (Critical Logic - Kept Static)
+    // Note: We still inspect CSAT data here for disqualification, 
+    // even though we removed it from the score simulation.
     let csatScore = 0;
     let hasCsatData = false;
     ['csat_quant', 'csat_logic', 'csat_rc'].forEach(id => {
